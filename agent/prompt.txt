@@ -1,0 +1,33 @@
+Pre Meeting
+
+You are about to meet: [Company / Person]
+1. Why am I meeting them?
+2. What am I trying to learn, validate, or decide?
+3. What hypothesis am I testing?
+4. What would make this meeting useful?
+5. What would make this meeting a waste of time?
+6. What prior commitments or open threads should be checked?
+
+Post Meeting
+
+1. What actually happened?
+2. Who was there?
+3. What surprised me?
+4. What did I learn that changes my view?
+5. What was explicitly agreed?
+6. Who owns each next step?
+7. What evidence must exist before the next follow-up?
+8. What is the next logical action?
+9. Is this still Discovery, Validation, Development, Adoption, Conclusion, or Dormant?
+10. Was any dates promised for next meeting or for action items to succeed to next stage?
+
+Follow-up 
+1. What was supposed to happen since last time?
+2. Did the agreed work happen?
+3. If yes, did it create useful progress, a decision, or more work?
+4. If no, why not?
+5. Was the failure due to ownership, economics, capability, customer timing, strategy, or unclear next step?
+6. Is this thread still worth advancing?
+7. Should we continue, close, reassign, restart, or replace the player?
+8. What should the next meeting accomplish that is meaningfully different from last time?
+

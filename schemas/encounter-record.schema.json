@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-assistant.local/schemas/encounter-record.schema.json",
+  "title": "Encounter Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "encounter_name",
+    "datetime_local",
+    "local_timezone",
+    "location",
+    "organization",
+    "people_present",
+    "meeting_type",
+    "thread_id",
+    "pre_meeting_purpose",
+    "hypothesis",
+    "success_criteria",
+    "observations",
+    "decisions_made",
+    "commitments",
+    "evidence_required",
+    "next_logical_action",
+    "current_state",
+    "impact_assessment",
+    "failure_mode",
+    "next_meeting_objective",
+    "close_restart_decision",
+    "momentum_status",
+    "recommended_next_action",
+    "epistemic_log"
+  ],
+  "properties": {
+    "encounter_name": {
+      "type": "string"
+    },
+    "datetime_local": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "local_timezone": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "organization": {
+      "type": "string"
+    },
+    "people_present": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "meeting_type": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "supplier",
+        "agent",
+        "internal",
+        "bd_visit",
+        "factory_review",
+        "dinner",
+        "other"
+      ]
+    },
+    "thread_id": {
+      "type": "string",
+      "description": "Links this encounter to a record in the Momentum Thread Register (e.g. BHPro, AKWA, EvoRack Thailand)."
+    },
+    "pre_meeting_purpose": {
+      "type": "string"
+    },
+    "hypothesis": {
+      "type": "string"
+    },
+    "success_criteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prior_commitments_checked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decisions_made": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "commitments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "description",
+          "owner"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "evidence_required": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "risks_constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_required": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "next_logical_action": {
+      "type": "string"
+    },
+    "current_state": {
+      "type": "string",
+      "enum": [
+        "Discovery",
+        "Validation",
+        "Development",
+        "Adoption",
+        "Conclusion",
+        "Dormant"
+      ]
+    },
+    "impact_assessment": {
+      "type": "string",
+      "enum": [
+        "positive_impact",
+        "partial_impact",
+        "no_impact",
+        "unknown"
+      ]
+    },
+    "failure_mode": {
+      "type": "string",
+      "enum": [
+        "none",
+        "no_owner",
+        "no_economics",
+        "no_capability",
+        "no_customer_pull",
+        "no_decision",
+        "no_evidence"
+      ]
+    },
+    "next_meeting_objective": {
+      "type": "string"
+    },
+    "next_meeting_date": {
+      "type": ["string", "null"],
+      "format": "date",
+      "description": "When the follow-up meeting should occur, if a date was promised or implied (PDF Post Meeting Q10). Null if none was set."
+    },
+    "topics": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Short (1-3 word) thematic tags for what was discussed, e.g. 'Budget', 'Suppliers', 'Risks'."
+    },
+    "close_restart_decision": {
+      "type": "string",
+      "enum": [
+        "continue",
+        "close",
+        "reassign",
+        "restart",
+        "replace_player",
+        "not_applicable"
+      ]
+    },
+    "momentum_status": {
+      "type": "string"
+    },
+    "recommended_next_action": {
+      "type": "string"
+    },
+    "epistemic_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "statement"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "assumption",
+              "hypothesis",
+              "decision",
+              "commitment",
+              "open_question",
+              "recommendation"
+            ]
+          },
+          "statement": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

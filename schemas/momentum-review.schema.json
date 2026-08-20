@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://personal-assistant.local/schemas/momentum-review.schema.json",
+  "title": "Momentum Review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "thread_id",
+    "thread_name",
+    "category_name", 
+    "due_date",
+    "organizations",
+    "meeting_type",
+    "purpose",
+    "hypothesis",
+    "agreed_actions",
+    "owners",
+    "decision_made",
+    "observations",
+    "success_criteria",
+    "prior_commitments_to_check",
+    "evidence_required",
+    "impact_assessment",
+    "what_happened_since",
+    "new_work_generated",
+    "conclusion_reached",
+    "items_not_advanced",
+    "non_advance_analysis",
+    "ownership_existence",
+    "recommended_objective_for_next_meeting",
+    "thread_state",
+    "weak_followup_flags",
+    "epistemic_log"
+  ],
+  "properties": {
+    "thread_id": {
+      "type": "string"
+    },
+    "thread_name": {
+      "type": "string"
+    },
+    "category_name": {
+      "type": "string"
+    },
+    "organizations": {
+      "type": "string"
+    },
+    "meeting_type": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "hypothesis": {
+      "type": "string"
+    },
+    "agreed_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "owners": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prior_commitments_to_check": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "success_criteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decisions_made": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence_required": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "what_happened_since": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "observations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "new_work_generated": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "conclusion_reached": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "items_not_advanced": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "non_advance_analysis": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item",
+          "reason_type",
+          "details"
+        ],
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "reason_type": {
+            "type": "string",
+            "enum": [
+              "economic",
+              "capability_based",
+              "strategic",
+              "timing_related",
+              "unmanaged"
+            ]
+          },
+          "details": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ownership_existence": {
+      "type": "string",
+      "enum": [
+        "clear",
+        "partial",
+        "missing"
+      ]
+    },
+    "recommended_objective_for_next_meeting": {
+      "type": "string"
+    },
+    "thread_state": {
+      "type": "string",
+      "enum": [
+        "Discovery",
+        "Validation",
+        "Development",
+        "Adoption",
+        "Conclusion",
+        "Dormant"
+      ]
+    },
+    "weak_followup_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "flag_type",
+          "statement",
+          "recommendation"
+        ],
+        "properties": {
+          "flag_type": {
+            "type": "string",
+            "enum": [
+              "completed_no_impact",
+              "no_conversion_to_next_step",
+              "repeat_meeting_risk",
+              "close_thread",
+              "reassign_thread",
+              "restart_thread",
+              "shift_to_alternate_player"
+            ]
+          },
+          "statement": {
+            "type": "string"
+          },
+          "recommendation": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "epistemic_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "statement"
+        ],
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "fact",
+              "assumption",
+              "hypothesis",
+              "decision",
+              "commitment",
+              "open_question",
+              "recommendation"
+            ]
+          },
+          "statement": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

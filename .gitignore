@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.token_cache.json
+out.json
+result.json
+*.local.json
+smartsheet_config.json
+*.m4a
+*.wav
+*.mp3
+*_pre_meeting.json
+*_momentum_review.json
