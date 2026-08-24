@@ -110,6 +110,14 @@ THREAD_COLUMNS = [
     _date_column("last_encounter_date"),
     _date_column("next_followup_date"),
     _text_column("last_momentum_review_json"),
+    # Written by the browser recording dashboard (worker/): a pre-meeting brief
+    # recorded before an encounter exists yet has nowhere else to live until the
+    # matching post-meeting recording creates the Encounter row and consumes it.
+    _text_column("pending_pre_meeting_brief"),
+    _date_column("pending_pre_meeting_recorded_at"),
+    _date_column("last_followup_reviewed_at"),
+    _text_column("meeting_recommendation_decision"),
+    _text_column("meeting_recommendation_rationale"),
 ]
 
 

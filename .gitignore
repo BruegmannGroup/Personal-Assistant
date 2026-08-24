@@ -7,6 +7,8 @@ out.json
 result.json
 *.local.json
 smartsheet_config.json
+audio_devices.json
+live_recording_*.wav
 *.m4a
 *.wav
 *.mp3

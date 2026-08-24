@@ -64,6 +64,11 @@ def _call_llm_for_review(system_prompt: str, thread_id: str, history: str, provi
             "momentum-review JSON Schema, under a top-level key 'momentum_review'. "
             "Be direct about whether this thread is Dormant, whether follow-up was activity without impact, "
             "and whether the next meeting should continue, close, reassign, restart, or replace the player.\n"
+            "meeting_recommendation is required: explicitly answer 'is the next meeting really necessary' as "
+            "decision='hold' (yes, proceed as planned), 'skip' (no — e.g. thread is Dormant, agreed work never "
+            "happened and nothing changed, or it would be a repeat meeting with no new information), or "
+            "'reschedule' (worth having, but not yet — evidence/work is still pending). rationale must be a "
+            "short, direct justification grounded in the encounter history below.\n"
         ),
         "thread_id": thread_id,
         "encounter_history": history,
@@ -147,6 +152,11 @@ def main():
 
     Path(out_path).write_text(json.dumps(review, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Momentum review saved to {out_path}")
+
+    recommendation = review.get("meeting_recommendation") or {}
+    print(f"\n>>> Is the next meeting necessary? {recommendation.get('decision', 'unknown').upper()}")
+    print(f">>> {recommendation.get('rationale', '')}")
+
     print(f"\nThread state: {review.get('thread_state')}")
     print(f"Recommended next-meeting objective: {review.get('recommended_objective_for_next_meeting')}")
     for flag in review.get("weak_followup_flags", []):

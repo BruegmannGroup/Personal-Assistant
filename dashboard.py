@@ -84,6 +84,9 @@ def render_reminder_banner():
                 if review is None:
                     st.error(error)
                 else:
+                    rec = review.get("meeting_recommendation") or {}
+                    badge = {"hold": "🟢", "reschedule": "🟡", "skip": "🔴"}.get(rec.get("decision"), "⚪")
+                    st.markdown(f"{badge} **{(rec.get('decision') or 'unknown').upper()}** — {rec.get('rationale', '')}")
                     st.success(f"Thread state: {review.get('thread_state')}")
                     st.write(review.get("recommended_objective_for_next_meeting"))
                     for wf in review.get("weak_followup_flags", []):

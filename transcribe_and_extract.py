@@ -202,6 +202,95 @@ def validate_extracted(parsed: dict) -> tuple[bool, bool]:
     return encounter_ok, momentum_ok
 
 
+def run_pipeline(
+    audio_path: str = None,
+    transcript_file: str = None,
+    metadata: dict = None,
+    model_size: str = "small",
+    require_confidence: bool = False,
+    provider: str = None,
+    model_name: str = None,
+    sync_smartsheet: bool = False,
+    out_path: str = "out.json",
+) -> dict:
+    """Full pipeline: transcript (from audio or a file) -> LLM extraction -> schema
+    validation -> optional Smartsheet sync -> saved to out_path. Reusable entry point —
+    both this CLI's main() and live_capture.py call it, so the two never diverge.
+
+    Exactly one of audio_path / transcript_file must be given.
+    Returns the same dict that's written to out_path.
+    """
+    if bool(audio_path) == bool(transcript_file):
+        raise ValueError("Provide exactly one of audio_path or transcript_file.")
+
+    metadata = dict(metadata or {})
+    metadata.setdefault("reference_date", datetime.now().isoformat(timespec="minutes"))
+
+    system_prompt = load_system_prompt()
+    if not system_prompt:
+        print("Warning: system prompt file not found. Place agent/executive-memory-agent.system.txt in repo.")
+
+    if transcript_file:
+        transcript_text = Path(transcript_file).read_text(encoding="utf-8")
+        merged = []
+        low_flags = []
+    else:
+        segments, info = transcribe_local(audio_path, model_size=model_size)
+        merged = merge_segments(segments)
+        low_flags = detect_low_confidence(merged, require_confidence=require_confidence)
+        transcript_text = build_transcript_text(merged)
+
+    # Build LLM request
+    try:
+        llm_out = call_llm_extract(system_prompt, transcript_text, metadata=metadata, provider=provider, model_name=model_name)
+    except Exception as e:
+        print("LLM call failed:", e)
+        print("Saving raw transcript and exiting.")
+        final = {"transcript": transcript_text, "segments": merged, "low_confidence": low_flags}
+        Path(out_path).write_text(json.dumps(final, indent=2), encoding="utf-8")
+        return final
+
+    # Try to parse JSON from LLM response
+    try:
+        parsed = try_parse_json_from_text(llm_out)
+    except Exception as e:
+        print("Failed to parse JSON from LLM output:", e)
+        print("Saving raw LLM output to file for inspection.")
+        final = {"llm_raw": llm_out, "transcript": transcript_text, "segments": merged}
+        Path(out_path).write_text(json.dumps(final, indent=2), encoding="utf-8")
+        return final
+
+    # Validate extracted records against their schemas
+    encounter_ok, momentum_ok = validate_extracted(parsed)
+    if not encounter_ok:
+        print("Warning: encounter-record schema validation failed. Review before trusting this record.")
+    if not momentum_ok:
+        print("Warning: momentum-review schema validation failed. Review before trusting this record.")
+
+    # Attach provenance and raw artifacts
+    final = {
+        "transcript": transcript_text,
+        "segments": merged,
+        "low_confidence_segment_indexes": low_flags,
+        "llm_response_text": llm_out,
+        "extracted": parsed,
+    }
+    Path(out_path).write_text(json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Done. Output saved to {out_path}")
+
+    if sync_smartsheet:
+        if not encounter_ok:
+            print("Skipping Smartsheet sync: encounter record failed schema validation.")
+        else:
+            from smartsheet_sync import push_encounter_record
+
+            print("Pushing encounter record to Smartsheet...")
+            push_encounter_record(parsed["encounter_record"])
+            print("Synced to Smartsheet.")
+
+    return final
+
+
 def main():
     p = argparse.ArgumentParser()
     input_group = p.add_mutually_exclusive_group(required=True)
@@ -223,68 +312,18 @@ def main():
     metadata = {}
     if args.metadata:
         metadata = json.loads(Path(args.metadata).read_text(encoding="utf-8"))
-    metadata.setdefault("reference_date", datetime.now().isoformat(timespec="minutes"))
 
-    system_prompt = load_system_prompt()
-    if not system_prompt:
-        print("Warning: system prompt file not found. Place agent/executive-memory-agent.system.txt in repo.")
-
-    if args.transcript_file:
-        transcript_text = Path(args.transcript_file).read_text(encoding="utf-8")
-        merged = []
-        low_flags = []
-    else:
-        segments, info = transcribe_local(args.audio, model_size=args.model)
-        merged = merge_segments(segments)
-        low_flags = detect_low_confidence(merged, require_confidence=args.require_confidence)
-        transcript_text = build_transcript_text(merged)
-
-    # Build LLM request
-    try:
-        llm_out = call_llm_extract(system_prompt, transcript_text, metadata=metadata, provider=args.llm_provider, model_name=args.llm_model)
-    except Exception as e:
-        print("LLM call failed:", e)
-        print("Saving raw transcript and exiting.")
-        Path(args.out).write_text(json.dumps({"transcript": transcript_text, "segments": merged, "low_confidence": low_flags}, indent=2), encoding="utf-8")
-        return
-
-    # Try to parse JSON from LLM response
-    parsed = None
-    try:
-        parsed = try_parse_json_from_text(llm_out)
-    except Exception as e:
-        print("Failed to parse JSON from LLM output:", e)
-        print("Saving raw LLM output to file for inspection.")
-        Path(args.out).write_text(json.dumps({"llm_raw": llm_out, "transcript": transcript_text, "segments": merged}, indent=2), encoding="utf-8")
-        return
-
-    # Validate extracted records against their schemas
-    encounter_ok, momentum_ok = validate_extracted(parsed)
-    if not encounter_ok:
-        print("Warning: encounter-record schema validation failed. Review before trusting this record.")
-    if not momentum_ok:
-        print("Warning: momentum-review schema validation failed. Review before trusting this record.")
-
-    # Attach provenance and raw artifacts
-    final = {
-        "transcript": transcript_text,
-        "segments": merged,
-        "low_confidence_segment_indexes": low_flags,
-        "llm_response_text": llm_out,
-        "extracted": parsed,
-    }
-    Path(args.out).write_text(json.dumps(final, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Done. Output saved to {args.out}")
-
-    if args.sync_smartsheet:
-        if not encounter_ok:
-            print("Skipping Smartsheet sync: encounter record failed schema validation.")
-        else:
-            from smartsheet_sync import push_encounter_record
-
-            print("Pushing encounter record to Smartsheet...")
-            push_encounter_record(parsed["encounter_record"])
-            print("Synced to Smartsheet.")
+    run_pipeline(
+        audio_path=args.audio,
+        transcript_file=args.transcript_file,
+        metadata=metadata,
+        model_size=args.model,
+        require_confidence=args.require_confidence,
+        provider=args.llm_provider,
+        model_name=args.llm_model,
+        sync_smartsheet=args.sync_smartsheet,
+        out_path=args.out,
+    )
 
 
 if __name__ == "__main__":

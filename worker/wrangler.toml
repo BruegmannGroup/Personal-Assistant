@@ -1,0 +1,14 @@
+name = "momentum-dashboard-worker"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+# Not secret — same IDs already in smartsheet_config.json. Safe to commit.
+[vars]
+ENCOUNTER_SHEET_ID = "3782427792068484"
+THREAD_SHEET_ID = "4656101717921668"
+GEMINI_MODEL = "gemini-3.5-flash-lite"
+
+# Secrets (never put these here — set via `wrangler secret put <NAME>`):
+#   SMARTSHEET_API_TOKEN
+#   GEMINI_API_KEY
+#   DASHBOARD_KEY   (a passphrase you invent; the frontend asks for it once)

@@ -170,10 +170,13 @@ def _upsert_thread(record: dict) -> None:
 
 def push_momentum_review(review: dict) -> None:
     """Store the latest momentum review JSON on the thread's summary row."""
+    from datetime import datetime
+
     config = _load_config()
     sheet_id = config["thread_sheet_id"]
     column_map = get_column_map(sheet_id)
 
+    recommendation = review.get("meeting_recommendation") or {}
     fields = {
         "Title": review["thread_name"],
         "thread_id": review["thread_id"],
@@ -181,6 +184,9 @@ def push_momentum_review(review: dict) -> None:
         "organizations": review.get("organizations", ""),
         "current_state": review["thread_state"],
         "last_momentum_review_json": json.dumps(review, ensure_ascii=False),
+        "last_followup_reviewed_at": datetime.now().date().isoformat(),
+        "meeting_recommendation_decision": recommendation.get("decision", ""),
+        "meeting_recommendation_rationale": recommendation.get("rationale", ""),
     }
     cells = _cells_from_fields(column_map, fields)
 
