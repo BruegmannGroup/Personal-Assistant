@@ -191,6 +191,10 @@
       },
       "description": "Short (1-3 word) thematic tags for what was discussed, e.g. 'Budget', 'Suppliers', 'Risks'."
     },
+    "audio_recording_key": {
+      "type": ["string", "null"],
+      "description": "R2 object key of the raw post-meeting recording (browser dashboard only; null for CLI-created records). Fetch via the Worker's GET /api/audio?key=... route."
+    },
     "close_restart_decision": {
       "type": "string",
       "enum": [

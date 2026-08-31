@@ -62,7 +62,7 @@ function App() {
         {view === "home" ? (
           <Home threads={threads} encounters={encounters} />
         ) : (
-          <Recorder threads={threads} onRecorded={reload} />
+          <Recorder onRecorded={reload} />
         )}
       </main>
     </div>

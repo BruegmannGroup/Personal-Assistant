@@ -5,16 +5,13 @@ export interface Env {
   ENCOUNTER_SHEET_ID: string;
   THREAD_SHEET_ID: string;
   GEMINI_MODEL: string;
+  AUDIO_BUCKET: R2Bucket;
 }
 
 export type Stage = "pre" | "post" | "followup";
 
 export interface RecordRequestBody {
-  thread_id: string;
   stage: Stage;
   audio_base64: string;
   mime_type: string;
-  organization?: string;
-  encounter_name?: string;
-  location?: string;
 }

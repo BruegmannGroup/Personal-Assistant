@@ -1,4 +1,7 @@
+import { useState } from "react";
 import type { Encounter, Thread } from "../types";
+import { audioUrl } from "../api";
+import { ThreadDetail } from "./ThreadDetail";
 
 type CycleStatus = "none" | "pre_only" | "both";
 
@@ -14,11 +17,42 @@ const RECOMMENDATION_BADGE: Record<string, string> = {
   skip: "🔴 Skip",
 };
 
-function ThreadStatusRow({ thread, hasEncounters }: { thread: Thread; hasEncounters: boolean }) {
+// Soonest due date first; threads with no follow-up date scheduled sink to the bottom.
+function byNextFollowupDate(a: Thread, b: Thread): number {
+  if (!a.next_followup_date && !b.next_followup_date) return 0;
+  if (!a.next_followup_date) return 1;
+  if (!b.next_followup_date) return -1;
+  return a.next_followup_date.localeCompare(b.next_followup_date);
+}
+
+function ThreadStatusRow({
+  thread,
+  hasEncounters,
+  onOpen,
+}: {
+  thread: Thread;
+  hasEncounters: boolean;
+  onOpen: () => void;
+}) {
   const status = cycleStatus(thread, hasEncounters);
   return (
-    <tr>
-      <td>{thread.thread_id}</td>
+    <tr className="clickable-row" onClick={onOpen}>
+      <td>
+        {thread.thread_id}
+        {thread.audio_recording_key && (
+          <a
+            className="listen-link"
+            href={audioUrl(thread.audio_recording_key)}
+            target="_blank"
+            rel="noreferrer"
+            title="Listen to latest follow-up recording"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {" "}
+            🔊
+          </a>
+        )}
+      </td>
       <td>{thread.organizations || "—"}</td>
       <td>{thread.current_state || "—"}</td>
       <td>
@@ -41,8 +75,11 @@ function ThreadStatusRow({ thread, hasEncounters }: { thread: Thread; hasEncount
 }
 
 export function Home({ threads, encounters }: { threads: Thread[]; encounters: Encounter[] }) {
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
+
   const rows = threads
     .filter((t) => t.thread_id)
+    .sort(byNextFollowupDate)
     .map((t) => ({
       thread: t,
       hasEncounters: encounters.some((e) => e.thread_id === t.thread_id),
@@ -58,10 +95,16 @@ export function Home({ threads, encounters }: { threads: Thread[]; encounters: E
     }))
   );
 
+  const selectedThread = threads.find((t) => t.thread_id === selectedThreadId) || null;
+  const selectedEncounters = selectedThreadId
+    ? encounters.filter((e) => e.thread_id === selectedThreadId)
+    : [];
+
   return (
     <div className="home">
       <section>
         <h2>Threads</h2>
+        <p className="muted">Sorted by next follow-up date. Click a row for details.</p>
         {rows.length === 0 ? (
           <p className="empty-state">No threads yet — record a pre or post-meeting brief to create one.</p>
         ) : (
@@ -78,7 +121,12 @@ export function Home({ threads, encounters }: { threads: Thread[]; encounters: E
             </thead>
             <tbody>
               {rows.map((r) => (
-                <ThreadStatusRow key={r.thread.thread_id} thread={r.thread} hasEncounters={r.hasEncounters} />
+                <ThreadStatusRow
+                  key={r.thread.thread_id}
+                  thread={r.thread}
+                  hasEncounters={r.hasEncounters}
+                  onOpen={() => setSelectedThreadId(r.thread.thread_id)}
+                />
               ))}
             </tbody>
           </table>
@@ -114,6 +162,14 @@ export function Home({ threads, encounters }: { threads: Thread[]; encounters: E
           </table>
         )}
       </section>
+
+      {selectedThread && (
+        <ThreadDetail
+          thread={selectedThread}
+          encounters={selectedEncounters}
+          onClose={() => setSelectedThreadId(null)}
+        />
+      )}
     </div>
   );
 }

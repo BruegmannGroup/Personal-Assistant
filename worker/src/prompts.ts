@@ -1,35 +1,70 @@
 import encounterSchema from "./schemas/encounter-record.schema.json";
 import momentumSchema from "./schemas/momentum-review.schema.json";
 import { PRE_MEETING_QUESTIONS, POST_MEETING_QUESTIONS, FOLLOWUP_QUESTIONS } from "./questions";
+import type { ThreadRow } from "./smartsheet";
 
 function numbered(questions: string[]): string {
   return questions.map((q, i) => `${i + 1}. ${q}`).join("\n");
 }
 
-export function buildPrePrompt(threadId: string): string {
+const THREAD_MATCHING_INSTRUCTIONS =
+  "thread_id identification: the user never types a thread id — you must determine it from what they say. " +
+  "Compare the organization/person/relationship mentioned in the audio against existing_threads below. " +
+  "If it clearly matches one (same organization, even if phrased differently — e.g. 'BHPro' vs 'BH Pro " +
+  "Industries'), reuse that exact existing thread_id verbatim. Only if it's genuinely a new relationship not " +
+  "in the list, invent a new thread_id: a short lowercase slug, letters/digits/underscores only, 3-15 " +
+  "characters, derived from the organization or person's name (e.g. 'akwa', 'bhpro'), that does not collide " +
+  "with any existing_threads entry. Always include the resolved organization name (best guess from audio) " +
+  "as well.";
+
+function formatThreadsForMatching(threads: ThreadRow[]): string {
+  if (!threads.length) return "(no existing threads yet — this will be the first one)";
+  return threads
+    .filter((t) => t.thread_id)
+    .map((t) => `- thread_id: "${t.thread_id}", organization: "${t.organizations || "unknown"}", state: ${t.current_state || "unknown"}`)
+    .join("\n");
+}
+
+export function buildPrePrompt(threads: ThreadRow[]): string {
   return JSON.stringify(
     {
       instructions:
         "The attached audio is the user speaking their answers, in order, to the following pre-meeting " +
         `questions:\n${numbered(PRE_MEETING_QUESTIONS)}\n` +
-        "Produce a single JSON object with exactly these keys and no others: " +
+        THREAD_MATCHING_INSTRUCTIONS +
+        "\nProduce a single JSON object with exactly these keys and no others: " +
+        "thread_id (string, per the matching rule above), organization (string), " +
         "pre_meeting_purpose (string, answer to Q1+Q2), hypothesis (string, answer to Q3), " +
         "success_criteria (string array, from Q2 and Q4), waste_of_time_criteria (string, answer to Q5), " +
         "prior_commitments_to_check (string array, answer to Q6, empty array if none mentioned). " +
         "Use the user's own words, cleaned up into complete sentences — do not invent content they didn't say.",
-      thread_id: threadId,
+      existing_threads: formatThreadsForMatching(threads),
     },
     null,
     2
   );
 }
 
-export function buildPostPrompt(threadId: string, pendingPreBrief: any, referenceDate: string): string {
+export interface PendingBriefContext {
+  thread_id: string;
+  organization: string | null;
+  brief: unknown;
+}
+
+export function buildPostPrompt(
+  threads: ThreadRow[],
+  pendingBriefs: PendingBriefContext[],
+  referenceDate: string
+): string {
   return JSON.stringify(
     {
       instructions:
         "The attached audio is the user speaking their own answers, in order, to the following post-meeting " +
         `debrief questions:\n${numbered(POST_MEETING_QUESTIONS)}\n` +
+        THREAD_MATCHING_INSTRUCTIONS +
+        "\nIf the thread_id you resolve has an entry in pending_pre_meeting_briefs below, use that brief's " +
+        "fields verbatim for pre_meeting_purpose/hypothesis/success_criteria rather than re-deriving them " +
+        "from this audio — it was recorded before this meeting for exactly this purpose.\n" +
         "Produce a single JSON object with two top-level keys: 'encounter_record' and 'momentum_review'.\n" +
         "encounter_record MUST validate against encounter_record_schema below: use exactly the property names " +
         "it defines, use exactly one of the listed enum values for any enum property (never free text), match " +
@@ -39,8 +74,6 @@ export function buildPostPrompt(threadId: string, pendingPreBrief: any, referenc
         "Q2->people_present, Q3/Q4->observations, Q5->decisions_made, Q6->commitments (owner per item), " +
         "Q7->evidence_required, Q8->next_logical_action, Q9->current_state, Q10->next_meeting_date) — this is " +
         "direct extraction, not inference from a raw conversation transcript.\n" +
-        `thread_id is '${threadId}'. If pendingPreBrief is non-null, use its fields verbatim for ` +
-        "pre_meeting_purpose/hypothesis/success_criteria rather than re-deriving them from the audio.\n" +
         "encounter_name: a short descriptive title if not obvious from context, e.g. '<organization> check-in'. " +
         "local_timezone/meeting_type/momentum_status/recommended_next_action/failure_mode: infer a reasonable " +
         "value if not explicitly stated — never leave a required field null.\n" +
@@ -54,8 +87,8 @@ export function buildPostPrompt(threadId: string, pendingPreBrief: any, referenc
         "epistemic_log rather than invent details.",
       encounter_record_schema: encounterSchema,
       momentum_review_schema: momentumSchema,
-      thread_id: threadId,
-      pendingPreBrief: pendingPreBrief || null,
+      existing_threads: formatThreadsForMatching(threads),
+      pending_pre_meeting_briefs: pendingBriefs,
       reference_date: referenceDate,
     },
     null,
@@ -63,7 +96,27 @@ export function buildPostPrompt(threadId: string, pendingPreBrief: any, referenc
   );
 }
 
-export function buildFollowupPrompt(threadId: string, encounterHistory: string): string {
+/** Followup is two Gemini calls: first resolve which existing thread this is
+ * about (needs only a compact thread list), then — once the Worker has fetched
+ * that thread's real encounter history — generate the actual review grounded in
+ * it. Unlike pre/post, a followup can never *create* a new thread: there's
+ * nothing to follow up on without prior history. */
+export function buildFollowupIdentifyPrompt(threads: ThreadRow[]): string {
+  return JSON.stringify(
+    {
+      instructions:
+        "The attached audio is the user speaking about a follow-up review for one of their existing threads " +
+        "below. Determine which one, from the organization/person/relationship mentioned. Produce a single " +
+        'JSON object: {"thread_id": "..."} using the exact thread_id from the list. If genuinely ambiguous, ' +
+        "pick the most recently active plausible match rather than leaving it blank.",
+      existing_threads: formatThreadsForMatching(threads),
+    },
+    null,
+    2
+  );
+}
+
+export function buildFollowupReviewPrompt(threadId: string, encounterHistory: string): string {
   return JSON.stringify(
     {
       instructions:

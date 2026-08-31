@@ -96,6 +96,9 @@ ENCOUNTER_COLUMNS = [
     _text_column("recommended_next_action"),
     _text_column("topics"),
     _text_column("record_json"),
+    # R2 object key for the raw recording, when this encounter came from the
+    # browser dashboard (worker/) rather than the CLI pipeline.
+    _text_column("audio_recording_key"),
 ]
 
 THREAD_COLUMNS = [
@@ -118,6 +121,8 @@ THREAD_COLUMNS = [
     _date_column("last_followup_reviewed_at"),
     _text_column("meeting_recommendation_decision"),
     _text_column("meeting_recommendation_rationale"),
+    # R2 object key for the latest follow-up recording (browser dashboard only).
+    _text_column("audio_recording_key"),
 ]
 
 

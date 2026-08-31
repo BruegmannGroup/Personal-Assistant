@@ -39,19 +39,30 @@ export function fetchEncounters(): Promise<{ encounters: Encounter[] }> {
 }
 
 export interface RecordPayload {
-  thread_id: string;
   stage: Stage;
   audio_base64: string;
   mime_type: string;
-  organization?: string;
-  encounter_name?: string;
-  location?: string;
 }
 
-export function postRecording(payload: RecordPayload): Promise<{ stage: Stage; thread_id: string; extracted: unknown }> {
+export interface RecordResult {
+  stage: Stage;
+  thread_id: string;
+  extracted: unknown;
+  audio_recording_key: string;
+  note?: string | null;
+}
+
+export function postRecording(payload: RecordPayload): Promise<RecordResult> {
   return apiFetch("/api/record", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+// <audio src> can't send the X-Dashboard-Key header, so the key travels as a
+// query param instead — the Worker's /api/audio route accepts either.
+export function audioUrl(key: string): string {
+  const dashboardKey = getStoredKey() || "";
+  return `${WORKER_URL}/api/audio?key=${encodeURIComponent(key)}&dashboard_key=${encodeURIComponent(dashboardKey)}`;
 }

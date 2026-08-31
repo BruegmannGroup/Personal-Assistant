@@ -258,6 +258,10 @@
         }
       },
       "description": "Explicit answer to 'is this meeting really necessary' — hold it as planned, skip it, or reschedule, and why."
+    },
+    "audio_recording_key": {
+      "type": ["string", "null"],
+      "description": "R2 object key of the raw follow-up recording (browser dashboard only; null for CLI-generated reviews). Fetch via the Worker's GET /api/audio?key=... route."
     }
   }
 }

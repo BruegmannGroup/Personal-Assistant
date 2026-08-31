@@ -37,20 +37,24 @@ selector, and a Home view with per-thread status (nothing recorded / pre only / 
 an aggregate action-items table. It talks to a small Cloudflare Worker (`worker/`) that holds
 the Smartsheet token and Gemini API key server-side — GitHub Pages is static-only and can't
 hold secrets, so nothing sensitive ever ships in the frontend bundle. Audio goes straight to
-Gemini as multimodal input (no separate transcription step) and is written to the same two
-Smartsheet sheets the CLI tools use, so both stay in sync.
+Gemini as multimodal input (no separate transcription step), written to the same two
+Smartsheet sheets the CLI tools use, and the raw recording is saved to Cloudflare R2 before
+anything else happens to it — so a failed Gemini call or Smartsheet write never loses the
+original audio, and every processed recording has a "listen to this" link in the dashboard.
 
 **One-time setup:**
 1. `cd worker && npm install`
 2. `npx wrangler login`
-3. Set secrets: `npx wrangler secret put SMARTSHEET_API_TOKEN`, `npx wrangler secret put GEMINI_API_KEY`,
+3. `npx wrangler r2 bucket create momentum-dashboard-audio` (R2 has a free tier — 10GB
+   storage/month — plenty for voice memos).
+4. Set secrets: `npx wrangler secret put SMARTSHEET_API_TOKEN`, `npx wrangler secret put GEMINI_API_KEY`,
    and `npx wrangler secret put DASHBOARD_KEY` (invent a passphrase — this is what the
    dashboard asks you for on first load).
-4. `npx wrangler deploy` — copy the `https://....workers.dev` URL it prints.
-5. `cd ../dashboard-web && npm install`, then set the `VITE_WORKER_URL` GitHub Actions repo
+5. `npx wrangler deploy` — copy the `https://....workers.dev` URL it prints.
+6. `cd ../dashboard-web && npm install`, then set the `VITE_WORKER_URL` GitHub Actions repo
    variable (Settings -> Secrets and variables -> Actions -> Variables) to that URL.
-6. In GitHub repo Settings -> Pages, set Source to "GitHub Actions".
-7. Push to `main` (or run the "Deploy dashboard to GitHub Pages" workflow manually) — the
+7. In GitHub repo Settings -> Pages, set Source to "GitHub Actions".
+8. Push to `main` (or run the "Deploy dashboard to GitHub Pages" workflow manually) — the
    dashboard deploys to `https://<org>.github.io/Personal-Assistant/`.
 
 For local frontend development: copy `dashboard-web/.env.example` to `dashboard-web/.env`,

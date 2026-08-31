@@ -88,6 +88,8 @@ export interface ThreadRow {
   last_followup_reviewed_at: string | null;
   meeting_recommendation_decision: string | null;
   meeting_recommendation_rationale: string | null;
+  audio_recording_key: string | null;
+  last_momentum_review_json: string | null;
 }
 
 export async function getThreads(env: Env): Promise<ThreadRow[]> {
@@ -104,6 +106,8 @@ export async function getThreads(env: Env): Promise<ThreadRow[]> {
     last_followup_reviewed_at: rowCellValue(row, columnMap, "last_followup_reviewed_at"),
     meeting_recommendation_decision: rowCellValue(row, columnMap, "meeting_recommendation_decision"),
     meeting_recommendation_rationale: rowCellValue(row, columnMap, "meeting_recommendation_rationale"),
+    audio_recording_key: rowCellValue(row, columnMap, "audio_recording_key"),
+    last_momentum_review_json: rowCellValue(row, columnMap, "last_momentum_review_json"),
   }));
 }
 
@@ -183,6 +187,7 @@ export async function pushEncounter(env: Env, record: any): Promise<void> {
     recommended_next_action: record.recommended_next_action || "",
     topics: (record.topics || []).join("; "),
     record_json: JSON.stringify(record),
+    audio_recording_key: record.audio_recording_key || null,
   };
   const cells = cellsFromFields(columnMap, fields);
   await req(env, `/sheets/${env.ENCOUNTER_SHEET_ID}/rows`, {
@@ -213,6 +218,7 @@ export async function pushMomentumReview(env: Env, review: any): Promise<void> {
     last_followup_reviewed_at: new Date().toISOString().slice(0, 10),
     meeting_recommendation_decision: rec.decision || "",
     meeting_recommendation_rationale: rec.rationale || "",
+    audio_recording_key: review.audio_recording_key || null,
   };
   const cells = cellsFromFields(columnMap, fields);
   const existing = await findThreadRow(env, columnMap, review.thread_id);

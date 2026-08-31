@@ -8,6 +8,11 @@ ENCOUNTER_SHEET_ID = "3782427792068484"
 THREAD_SHEET_ID = "4656101717921668"
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 
+# Create once with: npx wrangler r2 bucket create momentum-dashboard-audio
+[[r2_buckets]]
+binding = "AUDIO_BUCKET"
+bucket_name = "momentum-dashboard-audio"
+
 # Secrets (never put these here — set via `wrangler secret put <NAME>`):
 #   SMARTSHEET_API_TOKEN
 #   GEMINI_API_KEY

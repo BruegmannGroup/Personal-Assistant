@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
-import type { Stage, Thread } from "../types";
-import { postRecording } from "../api";
+import type { Stage } from "../types";
+import { postRecording, audioUrl } from "../api";
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -24,51 +24,80 @@ const STAGE_LABELS: Record<Stage, string> = {
 };
 
 const STAGE_HINTS: Record<Stage, string> = {
-  pre: "Speak through: why you're meeting them, what you're trying to learn or decide, your hypothesis, what would make it useful or a waste of time, and what prior commitments to check.",
-  post: "Speak through: what happened, who was there, what surprised you, what was agreed, who owns each next step, what evidence is needed, the next action, the thread's current state, and any date promised for the follow-up.",
-  followup: "Speak through: what was supposed to happen since last time, whether it did, whether it created real progress, why not if it didn't, and whether the next meeting is still worth having.",
+  pre: "Say who you're meeting (so it can be matched to a thread), then speak through: why you're meeting them, what you're trying to learn or decide, your hypothesis, what would make it useful or a waste of time, and what prior commitments to check.",
+  post: "Say who the meeting was with, then speak through: what happened, who was there, what surprised you, what was agreed, who owns each next step, what evidence is needed, the next action, the thread's current state, and any date promised for the follow-up.",
+  followup: "Say which relationship this follow-up is about, then speak through: what was supposed to happen since last time, whether it did, whether it created real progress, why not if it didn't, and whether the next meeting is still worth having.",
 };
 
 type Status = "idle" | "recording" | "processing" | "done" | "error";
 
-export function Recorder({ threads, onRecorded }: { threads: Thread[]; onRecorded: () => void }) {
+interface RecorderResult {
+  threadId: string;
+  extracted: unknown;
+  audioKey: string | null;
+  note: string | null;
+}
+
+export function Recorder({ onRecorded }: { onRecorded: () => void }) {
   const [stage, setStage] = useState<Stage>("pre");
-  const [threadId, setThreadId] = useState("");
-  const [organization, setOrganization] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [elapsed, setElapsed] = useState(0);
-  const [result, setResult] = useState<unknown>(null);
+  const [result, setResult] = useState<RecorderResult | null>(null);
   const [error, setError] = useState("");
-  const [showPreCheck, setShowPreCheck] = useState(false);
+  const [nudgeStage, setNudgeStage] = useState<Stage | null>(null);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | undefined>(undefined);
 
-  const selectedThread = threads.find((t) => t.thread_id === threadId.trim());
-  const hasPendingPre = !!selectedThread?.pending_pre_meeting_brief;
-
-  async function actuallyStart() {
+  function resetForNewTake() {
     setError("");
     setResult(null);
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-      ? "audio/webm;codecs=opus"
-      : "audio/webm";
-    const recorder = new MediaRecorder(stream, { mimeType });
-    chunksRef.current = [];
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-    recorder.onstop = () => {
-      stream.getTracks().forEach((t) => t.stop());
-      void processRecording(mimeType);
-    };
-    recorderRef.current = recorder;
-    recorder.start();
-    setStatus("recording");
-    setElapsed(0);
-    timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+  }
+
+  async function actuallyStart() {
+    resetForNewTake();
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError(
+        "Microphone access isn't available. This needs HTTPS (or localhost) — check the address bar."
+      );
+      setStatus("error");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      chunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        void processRecording(mimeType);
+      };
+      recorderRef.current = recorder;
+      recorder.start();
+      setStatus("recording");
+      setElapsed(0);
+      timerRef.current = window.setInterval(() => setElapsed((e) => e + 1), 1000);
+    } catch (e) {
+      const name = e instanceof DOMException ? e.name : "";
+      const message =
+        name === "NotAllowedError"
+          ? "Microphone access was denied. Allow it for this site in your browser settings and try again."
+          : name === "NotFoundError"
+            ? "No microphone was found on this device."
+            : e instanceof Error
+              ? e.message
+              : String(e);
+      setError(message);
+      setStatus("error");
+    }
   }
 
   function handleRecordClick() {
@@ -78,14 +107,6 @@ export function Recorder({ threads, onRecorded }: { threads: Thread[]; onRecorde
       setStatus("processing");
       return;
     }
-    if (!threadId.trim()) {
-      setError("Enter a thread id first (a short slug like 'bhpro').");
-      return;
-    }
-    if (stage === "post" && !hasPendingPre) {
-      setShowPreCheck(true);
-      return;
-    }
     void actuallyStart();
   }
 
@@ -93,15 +114,17 @@ export function Recorder({ threads, onRecorded }: { threads: Thread[]; onRecorde
     try {
       const blob = new Blob(chunksRef.current, { type: mimeType });
       const base64 = await blobToBase64(blob);
-      const res = await postRecording({
-        thread_id: threadId.trim(),
-        stage,
-        audio_base64: base64,
-        mime_type: mimeType,
-        organization: organization.trim() || undefined,
+      const res = await postRecording({ stage, audio_base64: base64, mime_type: mimeType });
+      setResult({
+        threadId: res.thread_id,
+        extracted: res.extracted,
+        audioKey: res.audio_recording_key,
+        note: res.note ?? null,
       });
-      setResult(res.extracted);
       setStatus("done");
+      // Nudge toward the natural next step. Pre -> Post is the one that was
+      // explicitly asked for; Post's own completion just clears any pending nudge.
+      setNudgeStage(stage === "pre" ? "post" : null);
       onRecorded();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -115,13 +138,19 @@ export function Recorder({ threads, onRecorded }: { threads: Thread[]; onRecorde
         {(["pre", "post", "followup"] as Stage[]).map((s) => (
           <button
             key={s}
-            className={s === stage ? "stage-tab active" : "stage-tab"}
+            className={[
+              "stage-tab",
+              s === stage ? "active" : "",
+              s === nudgeStage ? "nudge" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             disabled={status === "recording" || status === "processing"}
             onClick={() => {
               setStage(s);
               setStatus("idle");
-              setResult(null);
-              setError("");
+              resetForNewTake();
+              if (s === nudgeStage) setNudgeStage(null);
             }}
           >
             {STAGE_LABELS[s]}
@@ -129,34 +158,11 @@ export function Recorder({ threads, onRecorded }: { threads: Thread[]; onRecorde
         ))}
       </div>
 
-      <div className="recorder-form">
-        <label>
-          Thread id
-          <input
-            list="thread-ids"
-            value={threadId}
-            disabled={status === "recording" || status === "processing"}
-            onChange={(e) => setThreadId(e.target.value)}
-            placeholder="e.g. bhpro (new or existing)"
-          />
-          <datalist id="thread-ids">
-            {threads.map((t) => (
-              <option key={t.thread_id ?? ""} value={t.thread_id ?? ""} />
-            ))}
-          </datalist>
-        </label>
-        {stage === "pre" && (
-          <label>
-            Organization (optional)
-            <input
-              value={organization}
-              disabled={status === "recording" || status === "processing"}
-              onChange={(e) => setOrganization(e.target.value)}
-              placeholder="e.g. BHPro"
-            />
-          </label>
-        )}
-      </div>
+      {nudgeStage && (
+        <p className="nudge-banner">
+          Pre-meeting brief recorded — tap "{STAGE_LABELS[nudgeStage]}" above once the meeting's done.
+        </p>
+      )}
 
       <p className="stage-hint">{STAGE_HINTS[stage]}</p>
 
@@ -172,48 +178,26 @@ export function Recorder({ threads, onRecorded }: { threads: Thread[]; onRecorde
         <div className="record-status">
           {status === "idle" && <span>Tap to record your {STAGE_LABELS[stage].toLowerCase()} answer</span>}
           {status === "recording" && <span>Recording… {formatElapsed(elapsed)} — tap to stop</span>}
-          {status === "processing" && <span>Processing…</span>}
-          {status === "done" && <span>Done — tables updated.</span>}
+          {status === "processing" && (
+            <span>Processing — this can take 10-30s while Gemini matches the thread and extracts details…</span>
+          )}
+          {status === "done" && result && <span>Done — matched to thread "{result.threadId}".</span>}
           {status === "error" && <span className="error-text">{error}</span>}
         </div>
       </div>
 
-      {result != null && (
+      {result && (
         <details className="result-preview" open>
-          <summary>Extracted result</summary>
-          <pre>{JSON.stringify(result, null, 2)}</pre>
+          <summary>Extracted result — thread "{result.threadId}"</summary>
+          {result.note && <p className="muted">{result.note}</p>}
+          {result.audioKey && (
+            <audio className="playback" controls src={audioUrl(result.audioKey)}>
+              Your browser can't play this recording. It's still saved — retrieve it at{" "}
+              {audioUrl(result.audioKey)}
+            </audio>
+          )}
+          <pre>{JSON.stringify(result.extracted, null, 2)}</pre>
         </details>
-      )}
-
-      {showPreCheck && (
-        <div className="modal-backdrop">
-          <div className="modal">
-            <h3>No pre-meeting brief recorded</h3>
-            <p>
-              Thread "{threadId.trim()}" doesn't have a pre-meeting brief recorded yet. Record it now, or
-              continue with the post-meeting recording anyway?
-            </p>
-            <div className="modal-actions">
-              <button
-                onClick={() => {
-                  setShowPreCheck(false);
-                  setStage("pre");
-                }}
-              >
-                Record pre-meeting brief
-              </button>
-              <button
-                className="secondary"
-                onClick={() => {
-                  setShowPreCheck(false);
-                  void actuallyStart();
-                }}
-              >
-                Continue anyway
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -123,6 +123,7 @@ def push_encounter_record(record: dict) -> dict:
         "recommended_next_action": record.get("recommended_next_action", ""),
         "topics": _join(record.get("topics"), sep="; "),
         "record_json": json.dumps(record, ensure_ascii=False),
+        "audio_recording_key": record.get("audio_recording_key"),
     }
 
     row = {"toBottom": True, "cells": _cells_from_fields(column_map, fields)}
@@ -187,6 +188,7 @@ def push_momentum_review(review: dict) -> None:
         "last_followup_reviewed_at": datetime.now().date().isoformat(),
         "meeting_recommendation_decision": recommendation.get("decision", ""),
         "meeting_recommendation_rationale": recommendation.get("rationale", ""),
+        "audio_recording_key": review.get("audio_recording_key"),
     }
     cells = _cells_from_fields(column_map, fields)
 
