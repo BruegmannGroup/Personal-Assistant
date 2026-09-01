@@ -1,5 +1,4 @@
-"""Shared "what needs attention" logic for Stage C, used by both check_reminders.py
-(CLI) and dashboard.py (UI) so the two never drift out of sync.
+"""Shared "what needs attention" logic for Stage C, used by check_reminders.py (CLI).
 
 Priority order: an explicit next_followup_date that's due or overdue is the precise,
 intentional trigger (set during post-meeting capture — "when should the follow-up

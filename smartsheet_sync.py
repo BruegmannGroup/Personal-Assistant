@@ -203,8 +203,7 @@ def push_momentum_review(review: dict) -> None:
 
 
 def get_all_encounters() -> list[dict]:
-    """Return every encounter_record JSON payload across all threads, newest first —
-    used by dashboard.py for the meeting list and the aggregate action-items view."""
+    """Return every encounter_record JSON payload across all threads, newest first."""
     config = _load_config()
     sheet_id = config["encounter_sheet_id"]
     column_map = get_column_map(sheet_id)

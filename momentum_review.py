@@ -7,8 +7,8 @@ run the Follow-up Maturity prompt against that history — did the agreed work
 happen, did it create real progress, and should the next meeting continue,
 close, reassign, restart, or replace the player.
 
-run_momentum_review() is the reusable entry point — both this CLI's main() and
-dashboard.py's "Generate Momentum Review" button call it, so the two never diverge.
+run_momentum_review() is the reusable entry point for this CLI's main(); the browser
+dashboard's "Generate review" button does the same thing via the Worker's /api/review.
 
 Usage:
   python momentum_review.py --thread-id bhpro

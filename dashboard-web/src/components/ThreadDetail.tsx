@@ -1,5 +1,6 @@
+import { useState } from "react";
 import type { Encounter, MomentumReview, Thread } from "../types";
-import { audioUrl } from "../api";
+import { audioUrl, generateReview } from "../api";
 
 const RECOMMENDATION_BADGE: Record<string, string> = {
   hold: "🟢 Hold",
@@ -31,13 +32,32 @@ export function ThreadDetail({
   thread,
   encounters,
   onClose,
+  onRefresh,
 }: {
   thread: Thread;
   encounters: Encounter[];
   onClose: () => void;
+  onRefresh: () => void | Promise<void>;
 }) {
   const review = parseMomentumReview(thread.last_momentum_review_json);
   const latest = encounters[0]; // encounters already sorted newest-first by the API
+
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState("");
+
+  async function handleGenerateReview() {
+    if (!thread.thread_id) return;
+    setGenerating(true);
+    setGenerateError("");
+    try {
+      await generateReview(thread.thread_id);
+      await onRefresh();
+    } catch (e) {
+      setGenerateError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -90,10 +110,23 @@ export function ThreadDetail({
           </section>
         )}
 
-        {review ? (
-          <section>
+        <section>
+          <div className="section-header">
             <h3>Latest momentum review</h3>
-            <p>
+            <button
+              className="secondary-button"
+              disabled={generating || encounters.length === 0}
+              onClick={() => void handleGenerateReview()}
+              title={encounters.length === 0 ? "No encounters recorded yet for this thread" : undefined}
+            >
+              {generating ? "Generating…" : review ? "Refresh review" : "Generate review"}
+            </button>
+          </div>
+          {generateError && <p className="error-text">{generateError}</p>}
+
+          {review ? (
+            <>
+              <p>
               <strong>Original purpose:</strong> {review.purpose || "—"}
             </p>
             <p>
@@ -160,13 +193,11 @@ export function ThreadDetail({
                 </ul>
               </>
             )}
-          </section>
-        ) : (
-          <section>
-            <h3>Latest momentum review</h3>
+            </>
+          ) : (
             <p className="muted">No follow-up review recorded for this thread yet.</p>
-          </section>
-        )}
+          )}
+        </section>
       </div>
     </div>
   );

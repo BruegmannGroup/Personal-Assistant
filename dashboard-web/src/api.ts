@@ -60,6 +60,14 @@ export function postRecording(payload: RecordPayload): Promise<RecordResult> {
   });
 }
 
+export function generateReview(threadId: string): Promise<{ thread_id: string; extracted: unknown }> {
+  return apiFetch("/api/review", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thread_id: threadId }),
+  });
+}
+
 // <audio src> can't send the X-Dashboard-Key header, so the key travels as a
 // query param instead — the Worker's /api/audio route accepts either.
 export function audioUrl(key: string): string {

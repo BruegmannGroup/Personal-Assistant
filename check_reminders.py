@@ -7,8 +7,8 @@ and flag every thread whose follow-up date is due, is Dormant, or hasn't had an
 encounter logged in a while, as needing a momentum review before you next meet them.
 Run it each morning, or before travel, as your manual trigger for Stage C.
 
-Shares its flagging logic with dashboard.py via reminders.get_flagged_threads() —
-the two are guaranteed to agree.
+Uses reminders.get_flagged_threads() for the flagging logic (staleness/Dormant/due-date
+fallback order) — the browser dashboard computes its own thread-status view separately.
 
 Usage:
   python check_reminders.py

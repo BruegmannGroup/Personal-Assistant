@@ -1,7 +1,13 @@
 import type { Env, RecordRequestBody } from "./types";
-import { callGeminiWithAudio, parseJsonFromText } from "./llm";
+import { callGeminiWithAudio, callGeminiText, parseJsonFromText } from "./llm";
 import { SYSTEM_PROMPT } from "./systemPrompt";
-import { buildPrePrompt, buildPostPrompt, buildFollowupIdentifyPrompt, buildFollowupReviewPrompt } from "./prompts";
+import {
+  buildPrePrompt,
+  buildPostPrompt,
+  buildFollowupIdentifyPrompt,
+  buildFollowupReviewPrompt,
+  buildReviewOnlyPrompt,
+} from "./prompts";
 import type { PendingBriefContext } from "./prompts";
 import { saveAudioRecording, loadAudioRecording } from "./audio";
 import {
@@ -160,6 +166,21 @@ async function handleRecord(env: Env, body: RecordRequestBody): Promise<Response
   return json({ stage, thread_id: threadId, extracted: review, audio_recording_key: audioKey });
 }
 
+async function handleGenerateReview(env: Env, threadId: string): Promise<Response> {
+  const history = await getEncountersForThread(env, threadId);
+  if (!history.length) {
+    return json({ error: `No prior encounters found for thread_id='${threadId}'. Nothing to review yet.` }, 400);
+  }
+  const prompt = buildReviewOnlyPrompt(threadId, summarizeEncounters(history));
+  const raw = await callGeminiText(env, SYSTEM_PROMPT, prompt, 3000);
+  const parsed = parseJsonFromText(raw);
+  const review = parsed.momentum_review || parsed;
+  review.thread_id = threadId;
+
+  await pushMomentumReview(env, review);
+  return json({ thread_id: threadId, extracted: review });
+}
+
 async function handleAudioGet(env: Env, key: string): Promise<Response> {
   const obj = await loadAudioRecording(env, key);
   if (!obj) return json({ error: "Recording not found" }, 404);
@@ -204,6 +225,12 @@ export default {
       if (url.pathname === "/api/record" && request.method === "POST") {
         const body = (await request.json()) as RecordRequestBody;
         return await handleRecord(env, body);
+      }
+
+      if (url.pathname === "/api/review" && request.method === "POST") {
+        const body = (await request.json()) as { thread_id?: string };
+        if (!body.thread_id) return json({ error: "thread_id is required" }, 400);
+        return await handleGenerateReview(env, body.thread_id);
       }
 
       if (url.pathname === "/api/audio" && request.method === "GET") {

@@ -74,7 +74,15 @@ function ThreadStatusRow({
   );
 }
 
-export function Home({ threads, encounters }: { threads: Thread[]; encounters: Encounter[] }) {
+export function Home({
+  threads,
+  encounters,
+  onRefresh,
+}: {
+  threads: Thread[];
+  encounters: Encounter[];
+  onRefresh: () => void | Promise<void>;
+}) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
 
   const rows = threads
@@ -168,6 +176,7 @@ export function Home({ threads, encounters }: { threads: Thread[]; encounters: E
           thread={selectedThread}
           encounters={selectedEncounters}
           onClose={() => setSelectedThreadId(null)}
+          onRefresh={onRefresh}
         />
       )}
     </div>

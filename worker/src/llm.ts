@@ -8,25 +8,18 @@ import type { Env } from "./types";
 
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
-export async function callGeminiWithAudio(
+async function callGemini(
   env: Env,
   systemPrompt: string,
-  textPrompt: string,
-  audioBase64: string,
-  mimeType: string,
-  maxOutputTokens = 8000
+  parts: Record<string, unknown>[],
+  maxOutputTokens: number
 ): Promise<string> {
   const model = env.GEMINI_MODEL || "gemini-3.5-flash-lite";
   const url = `${GEMINI_API_BASE}/${model}:generateContent?key=${env.GEMINI_API_KEY}`;
 
   const body = {
     system_instruction: { parts: [{ text: systemPrompt }] },
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: textPrompt }, { inline_data: { mime_type: mimeType, data: audioBase64 } }],
-      },
-    ],
+    contents: [{ role: "user", parts }],
     generationConfig: {
       temperature: 0,
       maxOutputTokens,
@@ -46,11 +39,38 @@ export async function callGeminiWithAudio(
   }
 
   const data: any = await resp.json();
-  const parts = data?.candidates?.[0]?.content?.parts;
-  if (!parts || !parts.length) {
+  const responseParts = data?.candidates?.[0]?.content?.parts;
+  if (!responseParts || !responseParts.length) {
     throw new Error(`Gemini returned no content: ${JSON.stringify(data)}`);
   }
-  return parts.map((p: any) => p.text || "").join("");
+  return responseParts.map((p: any) => p.text || "").join("");
+}
+
+export function callGeminiWithAudio(
+  env: Env,
+  systemPrompt: string,
+  textPrompt: string,
+  audioBase64: string,
+  mimeType: string,
+  maxOutputTokens = 8000
+): Promise<string> {
+  return callGemini(
+    env,
+    systemPrompt,
+    [{ text: textPrompt }, { inline_data: { mime_type: mimeType, data: audioBase64 } }],
+    maxOutputTokens
+  );
+}
+
+/** For generating a review from Smartsheet history alone — no recording involved
+ * (the "refresh this review without re-recording" path). */
+export function callGeminiText(
+  env: Env,
+  systemPrompt: string,
+  textPrompt: string,
+  maxOutputTokens = 3000
+): Promise<string> {
+  return callGemini(env, systemPrompt, [{ text: textPrompt }], maxOutputTokens);
 }
 
 export function parseJsonFromText(text: string): any {

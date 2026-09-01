@@ -60,7 +60,7 @@ function App() {
         {loadError && <p className="error-text">{loadError}</p>}
         {loading && <p className="muted">Loading…</p>}
         {view === "home" ? (
-          <Home threads={threads} encounters={encounters} />
+          <Home threads={threads} encounters={encounters} onRefresh={reload} />
         ) : (
           <Recorder onRecorded={reload} />
         )}

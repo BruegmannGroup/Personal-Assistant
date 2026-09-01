@@ -19,28 +19,31 @@ Intent -> Encounter -> Observation -> Commitment -> Evidence -> Outcome -> Impac
 Every relationship/thread moves through the same operating chain, and each stage
 has its own tool:
 
-| Stage | When | Tool |
+| Stage | When | Where |
 |---|---|---|
-| A. Pre-meeting | Before a meaningful meeting/visit | `pre_meeting.py` |
-| B. Post-meeting capture | Right after (asks/extracts when the follow-up should occur) | `transcribe_and_extract.py` |
-| C. Follow-up maturity | Triggered by that follow-up date (or staleness/Dormant as fallback) | `dashboard.py` or `check_reminders.py` to see it's due, `momentum_review.py` to generate it |
+| A. Pre-meeting | Before a meaningful meeting/visit | Record button, "Pre-meeting" tab |
+| B. Post-meeting capture | Right after (asks/extracts when the follow-up should occur) | Record button, "Post-meeting" tab |
+| C. Follow-up maturity | Triggered by that follow-up date (or staleness/Dormant as fallback) | Record button, "Follow-up" tab — or the "Generate review"/"Refresh review" button on a thread's detail card, no recording needed |
 
-`dashboard.py` (Streamlit) is the visual home for all of this — a banner surfaces threads
-due for Stage C with a one-click trigger, plus a per-meeting Summary/Decisions/Actions/Topics
-view and an aggregate Action Items list across every encounter.
+The **browser dashboard** (`dashboard-web/`, hosted on GitHub Pages) is the one place all of
+this happens: a speaker-icon record button with a Pre / Post / Follow-up stage selector, a
+Home view sorted by next follow-up date with per-thread status (nothing recorded / pre only /
+both) and a hold/skip/reschedule recommendation, and a per-thread detail card (click a row)
+showing the latest encounter and momentum review with a button to regenerate the review from
+history alone, no re-recording needed. It talks to a small Cloudflare Worker (`worker/`) that
+holds the Smartsheet token and Gemini API key server-side — GitHub Pages is static-only and
+can't hold secrets, so nothing sensitive ever ships in the frontend bundle. Audio goes
+straight to Gemini as multimodal input (no separate transcription step, and no thread id to
+type — Gemini matches the organization/relationship mentioned to an existing thread or starts
+a new one), written to the same two Smartsheet sheets the CLI tools use, and the raw recording
+is saved to Cloudflare R2 before anything else happens to it — so a failed Gemini call or
+Smartsheet write never loses the original audio, and every processed recording has a
+"listen to this" link in the dashboard.
 
-## Browser recording dashboard (recommended)
-
-The primary way to run all three stages is now the browser dashboard in `dashboard-web/`,
-hosted on GitHub Pages: a speaker-icon record button, a Pre / Post / Follow-up stage
-selector, and a Home view with per-thread status (nothing recorded / pre only / both) and
-an aggregate action-items table. It talks to a small Cloudflare Worker (`worker/`) that holds
-the Smartsheet token and Gemini API key server-side — GitHub Pages is static-only and can't
-hold secrets, so nothing sensitive ever ships in the frontend bundle. Audio goes straight to
-Gemini as multimodal input (no separate transcription step), written to the same two
-Smartsheet sheets the CLI tools use, and the raw recording is saved to Cloudflare R2 before
-anything else happens to it — so a failed Gemini call or Smartsheet write never loses the
-original audio, and every processed recording has a "listen to this" link in the dashboard.
+There used to be a second, Streamlit-based dashboard (`dashboard.py`) for viewing encounters
+and triggering Stage C — it's been retired now that the browser dashboard covers everything
+it did (plus recording, thread status, and the same review-refresh button), to avoid having
+two separate "dashboards" to keep straight.
 
 **One-time setup:**
 1. `cd worker && npm install`
@@ -62,8 +65,9 @@ fill in `VITE_WORKER_URL`, then `npm run dev` (and `npx wrangler dev` in `worker
 want to hit a local copy of the Worker instead of the deployed one).
 
 The CLI tools (`pre_meeting.py`, `transcribe_and_extract.py`, `live_capture.py`,
-`momentum_review.py`) and the Streamlit `dashboard.py` all keep working unchanged as an
-offline fallback if the Worker/dashboard is ever unavailable.
+`momentum_review.py`) still work unchanged as an offline fallback if the Worker/dashboard is
+ever unavailable — they're typed/local-audio-file-based rather than browser-recording-based,
+but hit the same Smartsheet sheets.
 
 ## Files
 
@@ -75,27 +79,32 @@ offline fallback if the Worker/dashboard is ever unavailable.
 - [transcribe_and_extract.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/transcribe_and_extract.py) — Stage B: local faster-whisper transcription + LLM extraction into a validated Encounter Record (`run_pipeline()` is the reusable entry point)
 - [audio_capture.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/audio_capture.py) — cross-platform live audio capture (mic and, where the OS exposes one, a loopback/system-audio device), no Teams/Graph API involved
 - [live_capture.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/live_capture.py) — records a meeting live (`--list-devices` to pick your input(s)), then feeds straight into Stage B's pipeline — the "stay present during the call" alternative to Teams transcript pull
-- [reminders.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/reminders.py) — shared "what needs attention" logic (`get_flagged_threads`) used by both `check_reminders.py` and `dashboard.py`, so they never disagree
+- [reminders.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/reminders.py) — shared "what needs attention" logic (`get_flagged_threads`), used by `check_reminders.py`
 - [check_reminders.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/check_reminders.py) — Stage C trigger (CLI): prints which threads need a momentum review before their next meeting
-- [dashboard.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/dashboard.py) — Stage C trigger (UI, `streamlit run dashboard.py`): same reminder banner with a one-click trigger, plus per-meeting and aggregate action-item views
-- [momentum_review.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/momentum_review.py) — Stage C: generates the Follow-up Maturity review for a thread from its prior encounters (`run_momentum_review()` is the reusable entry point both the CLI and dashboard call)
+- [momentum_review.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/momentum_review.py) — Stage C: generates the Follow-up Maturity review for a thread from its prior encounters (`run_momentum_review()` is the reusable entry point; the browser dashboard's "Generate review" button does the same thing via the Worker's `/api/review` instead)
 - [llm_client.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/llm_client.py) — pluggable LLM layer (Gemini/OpenAI/Anthropic); every script above calls through this, never a provider SDK directly
 - [smartsheet_sync.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/smartsheet_sync.py) — pushes validated records to Smartsheet
 - [setup_smartsheet.py](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/setup_smartsheet.py) — one-time script to create the Smartsheet sheets
 - [SMARTSHEET_SETUP.md](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/SMARTSHEET_SETUP.md) — setup instructions
-- [worker/](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/worker) — Cloudflare Worker backing the browser dashboard: holds the Smartsheet/Gemini secrets, does audio -> Gemini -> Smartsheet for all three stages (`src/index.ts` router, `src/smartsheet.ts` TS port of `smartsheet_sync.py`, `src/prompts.ts` stage-specific extraction prompts)
-- [dashboard-web/](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/dashboard-web) — React + Vite browser dashboard (GitHub Pages): record button, Pre/Post/Follow-up stages, Home view with per-thread status and action items
+- [worker/](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/worker) — Cloudflare Worker backing the browser dashboard: holds the Smartsheet/Gemini secrets, does audio -> Gemini -> Smartsheet for all three stages (`POST /api/record`), plus a no-audio review refresh (`POST /api/review`) (`src/index.ts` router, `src/smartsheet.ts` TS port of `smartsheet_sync.py`, `src/prompts.ts` stage-specific extraction prompts)
+- [dashboard-web/](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/dashboard-web) — React + Vite browser dashboard (GitHub Pages): record button, Pre/Post/Follow-up stages, Home view sorted by next follow-up date with per-thread status and action items, clickable thread rows with a full detail card
 - [NEXT_STEPS.md](/Users/anushasrinivasan/Library/CloudStorage/OneDrive-Bruegmann/Documents/Github/Personal-Assistant/NEXT_STEPS.md) — how to run the pipeline end to end, what's still open
 
 ## Usage
 
+**Normal path** (browser dashboard): open the deployed `dashboard-web` URL, click **Record**,
+pick a stage (Pre-meeting / Post-meeting / Follow-up), tap the speaker icon, talk, tap again to
+stop. That's it — no thread id, no forms. Click **Home** to see thread status, next follow-up
+dates, and action items; click a thread row for the full detail card, including a button to
+regenerate its momentum review without recording anything.
+
+**Offline/CLI fallback:**
 1. **Before** a meeting: `python pre_meeting.py` — answer the six questions, get a metadata file back.
 2. **After**: `python transcribe_and_extract.py --audio meeting.m4a --metadata <file from step 1> --sync-smartsheet`
    (also asks/extracts a `next_meeting_date` — when the follow-up should occur, if one was set).
-3. **Periodically**, or just leave it open: `streamlit run dashboard.py` — the banner at the
-   top shows which threads are due for a momentum review (by their `next_meeting_date`, or
-   Dormant/staleness as a fallback for threads with no date set), with a button that
-   generates and syncs it right there. `python check_reminders.py` gives the same list as text.
+3. **Periodically**: `python check_reminders.py` prints which threads are due for a momentum
+   review (by their `next_meeting_date`, or Dormant/staleness as a fallback), and
+   `python momentum_review.py --thread-id <id> --sync-smartsheet` generates one.
 
 Every thread moves through: Discovery -> Validation -> Development -> Adoption -> Conclusion, or stalls into Dormant — the agent's most important job is catching that last one early.
 

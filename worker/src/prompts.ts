@@ -116,6 +116,33 @@ export function buildFollowupIdentifyPrompt(threads: ThreadRow[]): string {
   );
 }
 
+/** Regenerate a review from Smartsheet history alone, no recording — the "refresh
+ * without re-recording" path triggered by a button rather than the mic. Same
+ * grounding and same required meeting_recommendation as the recorded version. */
+export function buildReviewOnlyPrompt(threadId: string, encounterHistory: string): string {
+  return JSON.stringify(
+    {
+      instructions:
+        `Run the Follow-up Maturity prompt for thread_id='${threadId}' using only the encounter history ` +
+        "below (no new spoken input this time — the user asked for a refreshed review from existing data). " +
+        "Produce a single JSON object conforming to momentum_review_schema, under a top-level key " +
+        "'momentum_review'. Be direct about whether this thread is Dormant, whether follow-up was activity " +
+        "without impact, and whether the next meeting should continue, close, reassign, restart, or replace " +
+        "the player.\n" +
+        "meeting_recommendation is required: explicitly answer 'is the next meeting really necessary' as " +
+        "decision='hold' (yes, proceed as planned), 'skip' (no — e.g. thread is Dormant, agreed work never " +
+        "happened and nothing changed, or it would be a repeat meeting with no new information), or " +
+        "'reschedule' (worth having, but not yet — evidence/work is still pending). rationale must be a short, " +
+        "direct justification grounded in the history below.",
+      momentum_review_schema: momentumSchema,
+      thread_id: threadId,
+      encounter_history: encounterHistory,
+    },
+    null,
+    2
+  );
+}
+
 export function buildFollowupReviewPrompt(threadId: string, encounterHistory: string): string {
   return JSON.stringify(
     {
