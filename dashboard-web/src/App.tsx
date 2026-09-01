@@ -4,8 +4,8 @@ import { KeyGate } from "./components/KeyGate";
 import { useDashboardKey } from "./useDashboardKey";
 import { Home } from "./components/Home";
 import { Recorder } from "./components/Recorder";
-import { fetchEncounters, fetchThreads } from "./api";
-import type { Encounter, Thread } from "./types";
+import { fetchEncounters, fetchFlagged, fetchThreads } from "./api";
+import type { Encounter, FlaggedThread, Thread } from "./types";
 
 type View = "home" | "recorder";
 
@@ -14,6 +14,7 @@ function App() {
   const [view, setView] = useState<View>("home");
   const [threads, setThreads] = useState<Thread[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [flagged, setFlagged] = useState<FlaggedThread[]>([]);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -21,9 +22,10 @@ function App() {
     setLoading(true);
     setLoadError("");
     try {
-      const [t, e] = await Promise.all([fetchThreads(), fetchEncounters()]);
+      const [t, e, f] = await Promise.all([fetchThreads(), fetchEncounters(), fetchFlagged()]);
       setThreads(t.threads);
       setEncounters(e.encounters);
+      setFlagged(f.flagged);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -60,7 +62,7 @@ function App() {
         {loadError && <p className="error-text">{loadError}</p>}
         {loading && <p className="muted">Loading…</p>}
         {view === "home" ? (
-          <Home threads={threads} encounters={encounters} onRefresh={reload} />
+          <Home threads={threads} encounters={encounters} flagged={flagged} onRefresh={reload} />
         ) : (
           <Recorder onRecorded={reload} />
         )}

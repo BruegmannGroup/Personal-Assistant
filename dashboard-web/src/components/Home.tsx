@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Encounter, Thread } from "../types";
+import type { Encounter, FlaggedThread, Thread } from "../types";
 import { audioUrl } from "../api";
 import { ThreadDetail } from "./ThreadDetail";
 
@@ -77,10 +77,12 @@ function ThreadStatusRow({
 export function Home({
   threads,
   encounters,
+  flagged,
   onRefresh,
 }: {
   threads: Thread[];
   encounters: Encounter[];
+  flagged: FlaggedThread[];
   onRefresh: () => void | Promise<void>;
 }) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
@@ -110,6 +112,25 @@ export function Home({
 
   return (
     <div className="home">
+      {flagged.length > 0 && (
+        <div className="attention-banner">
+          <strong>
+            {flagged.length} thread{flagged.length === 1 ? "" : "s"} need{flagged.length === 1 ? "s" : ""} attention
+          </strong>
+          <ul>
+            {flagged.map((f) => (
+              <li
+                key={f.thread_id}
+                className="clickable-row"
+                onClick={() => setSelectedThreadId(f.thread_id)}
+              >
+                <strong>{f.thread_id}</strong> — {f.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <section>
         <h2>Threads</h2>
         <p className="muted">Sorted by next follow-up date. Click a row for details.</p>

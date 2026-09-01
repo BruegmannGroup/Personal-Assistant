@@ -8,6 +8,20 @@ const RECOMMENDATION_BADGE: Record<string, string> = {
   skip: "🔴 Skip",
 };
 
+const FLAG_TITLES: Record<string, string> = {
+  completed_no_impact: "Completed, No Impact",
+  no_conversion_to_next_step: "No Conversion to Next Step",
+  repeat_meeting_risk: "Repeat Meeting Risk",
+  close_thread: "Recommend Closing Thread",
+  reassign_thread: "Recommend Reassigning Thread",
+  restart_thread: "Recommend Restarting Thread",
+  shift_to_alternate_player: "Recommend Shifting to Alternate Player",
+};
+
+function flagTitle(flagType: string): string {
+  return FLAG_TITLES[flagType] || flagType.replace(/_/g, " ");
+}
+
 function List({ items }: { items?: string[] }) {
   if (!items || !items.length) return <p className="muted">None recorded.</p>;
   return (
@@ -184,13 +198,15 @@ export function ThreadDetail({
                 <p>
                   <strong>Weak follow-up flags:</strong>
                 </p>
-                <ul>
+                <div className="flag-list">
                   {review.weak_followup_flags.map((f, i) => (
-                    <li key={i}>
-                      [{f.flag_type}] {f.statement} → {f.recommendation}
-                    </li>
+                    <div className="flag-card" key={i}>
+                      <div className="flag-title">{flagTitle(f.flag_type)}</div>
+                      <p>{f.statement}</p>
+                      <p className="flag-recommendation">→ {f.recommendation}</p>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </>
             )}
             </>

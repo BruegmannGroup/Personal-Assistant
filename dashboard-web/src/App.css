@@ -279,6 +279,33 @@ th {
   max-height: 300px;
 }
 
+.attention-banner {
+  background: var(--pending-bg);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.attention-banner strong {
+  color: var(--pending-text);
+}
+
+.attention-banner ul {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.attention-banner li {
+  padding: 6px 0;
+  font-size: 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.attention-banner li:first-child {
+  border-top: none;
+}
+
 /* Home: clickable thread rows */
 .clickable-row {
   cursor: pointer;
@@ -396,5 +423,33 @@ th {
 .recommendation-banner p {
   margin: 4px 0 0;
   font-size: 13px;
+  color: var(--empty-text);
+}
+
+.flag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.flag-card {
+  background: var(--empty-bg);
+  border-left: 3px solid var(--danger);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
+.flag-card p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.flag-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-h);
+}
+
+.flag-recommendation {
   color: var(--empty-text);
 }

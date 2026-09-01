@@ -1,4 +1,4 @@
-import type { Stage, Thread, Encounter } from "./types";
+import type { Stage, Thread, Encounter, FlaggedThread } from "./types";
 
 const WORKER_URL = (import.meta.env.VITE_WORKER_URL as string | undefined) || "";
 const KEY_STORAGE = "momentum_dashboard_key";
@@ -58,6 +58,10 @@ export function postRecording(payload: RecordPayload): Promise<RecordResult> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+export function fetchFlagged(): Promise<{ flagged: FlaggedThread[] }> {
+  return apiFetch("/api/flagged");
 }
 
 export function generateReview(threadId: string): Promise<{ thread_id: string; extracted: unknown }> {

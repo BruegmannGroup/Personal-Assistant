@@ -27,6 +27,15 @@ export interface WeakFollowupFlag {
   recommendation: string;
 }
 
+export interface FlaggedThread {
+  thread_id: string;
+  current_state: string | null;
+  last_encounter_date: string | null;
+  next_followup_date: string | null;
+  days_since: number | null;
+  reason: string;
+}
+
 export interface MomentumReview {
   thread_id: string;
   thread_name?: string;

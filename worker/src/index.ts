@@ -10,6 +10,7 @@ import {
 } from "./prompts";
 import type { PendingBriefContext } from "./prompts";
 import { saveAudioRecording, loadAudioRecording } from "./audio";
+import { getFlaggedThreads } from "./reminders";
 import {
   getThreads,
   getEncounters,
@@ -225,6 +226,10 @@ export default {
       if (url.pathname === "/api/record" && request.method === "POST") {
         const body = (await request.json()) as RecordRequestBody;
         return await handleRecord(env, body);
+      }
+
+      if (url.pathname === "/api/flagged" && request.method === "GET") {
+        return json({ flagged: await getFlaggedThreads(env) });
       }
 
       if (url.pathname === "/api/review" && request.method === "POST") {
