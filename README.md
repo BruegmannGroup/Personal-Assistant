@@ -67,24 +67,36 @@ want to hit a local copy of the Worker instead of the deployed one).
 **Deploying the frontend to Heroku instead of GitHub Pages:** the Worker stays on Cloudflare
 either way (nothing there changes — CORS is already wide open, so it doesn't care which
 frontend origin calls it). Only `dashboard-web/` moves. This repo is a monorepo (the Heroku
-app root and `dashboard-web/` aren't the same directory), so it needs
-`heroku-buildpack-monorepo` to point Heroku at the right subdirectory, plus the Node and
-static buildpacks, in this order:
+app root and `dashboard-web/` aren't the same directory), so it needs a monorepo buildpack to
+point Heroku at the right subdirectory, plus Node to build it, plus Nginx to serve it — **in
+this exact order**:
 ```
-heroku create <app-name>
-heroku buildpacks:add -a <app-name> https://github.com/heroku/heroku-buildpack-monorepo.git
+heroku buildpacks:add -a <app-name> -i 1 https://github.com/lstoll/heroku-buildpack-monorepo
 heroku buildpacks:add -a <app-name> heroku/nodejs
-heroku buildpacks:add -a <app-name> https://github.com/heroku/heroku-buildpack-static.git
+heroku buildpacks:add -a <app-name> heroku-community/nginx
 heroku config:set -a <app-name> APP_BASE=dashboard-web
 heroku config:set -a <app-name> NPM_CONFIG_PRODUCTION=false
 heroku config:set -a <app-name> VITE_WORKER_URL=<the workers.dev URL from step 5 above>
-git push heroku main
 ```
-`NPM_CONFIG_PRODUCTION=false` matters — without it, Heroku's Node buildpack skips
-devDependencies (which is where `vite`/`typescript` live), and the build step fails.
-`dashboard-web/static.json` (`{"root": "dist"}`) tells the static buildpack where the built
-site ends up; `heroku-postbuild` in `dashboard-web/package.json` is what actually runs the
-build. No `Procfile` needed — the static buildpack supplies its own web process.
+Notes on each of these, since two buildpacks that looked like the obvious choice turned out
+to be wrong (a nonexistent official monorepo buildpack, then a real but now-deprecated static
+buildpack that doesn't run on current stacks) — both fixed after actually verifying against
+the buildpacks' real sources, not guessing:
+- `lstoll/heroku-buildpack-monorepo` — there's no first-party `heroku/*` monorepo buildpack;
+  this is the verified-working community one. `-i 1` forces it into the first slot — it has
+  to relocate `dashboard-web/`'s contents to the app root before anything else runs.
+- `heroku-community/nginx`, **not** `heroku-buildpack-static` — the static buildpack is
+  deprecated and rejects modern stacks (heroku-22+) outright. This repo already has what the
+  Nginx buildpack's static-site preset needs: `dashboard-web/Procfile`
+  (`web: bin/start-nginx-static`) and `dashboard-web/config/nginx.conf.erb` (copied from the
+  buildpack's own template — its default document root, `/app/dist`, already matches where
+  `vite build` outputs).
+- `NPM_CONFIG_PRODUCTION=false` — without it, Heroku's Node buildpack skips devDependencies
+  (where `vite`/`typescript` live), and the build step fails.
+
+If deploying via the Heroku Dashboard's GitHub integration instead of the CLI: set the same
+three buildpacks (same order) under Settings → Buildpacks, and the same three config vars
+under Settings → Config Vars, then trigger a deploy from the Deploy tab.
 `vite.config.ts`'s `base` defaults to `/` (correct for Heroku's own domain root); only the
 GitHub Actions workflow overrides it to `/Personal-Assistant/` for GitHub Pages, so both
 targets can coexist without either breaking the other.
