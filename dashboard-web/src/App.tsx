@@ -20,17 +20,23 @@ function App() {
 
   const reload = useCallback(async () => {
     setLoading(true);
-    setLoadError("");
-    try {
-      const [t, e, f] = await Promise.all([fetchThreads(), fetchEncounters(), fetchFlagged()]);
-      setThreads(t.threads);
-      setEncounters(e.encounters);
-      setFlagged(f.flagged);
-    } catch (err) {
-      setLoadError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
+    // Settled, not all-or-nothing: one endpoint failing (e.g. a route the
+    // deployed Worker doesn't have yet) shouldn't blank out data the other
+    // endpoints already have.
+    const [t, e, f] = await Promise.allSettled([fetchThreads(), fetchEncounters(), fetchFlagged()]);
+    const errors: string[] = [];
+
+    if (t.status === "fulfilled") setThreads(t.value.threads);
+    else errors.push(`threads: ${t.reason instanceof Error ? t.reason.message : String(t.reason)}`);
+
+    if (e.status === "fulfilled") setEncounters(e.value.encounters);
+    else errors.push(`encounters: ${e.reason instanceof Error ? e.reason.message : String(e.reason)}`);
+
+    if (f.status === "fulfilled") setFlagged(f.value.flagged);
+    else errors.push(`flagged: ${f.reason instanceof Error ? f.reason.message : String(f.reason)}`);
+
+    setLoadError(errors.join(" · "));
+    setLoading(false);
   }, []);
 
   useEffect(() => {
