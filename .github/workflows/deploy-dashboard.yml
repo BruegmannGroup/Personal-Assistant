@@ -42,6 +42,8 @@ jobs:
           # Set this as a repo Variable (Settings -> Secrets and variables -> Actions ->
           # Variables) to the URL `wrangler deploy` printed for worker/.
           VITE_WORKER_URL: ${{ vars.VITE_WORKER_URL }}
+          # GitHub Pages serves this as a project site, not the domain root.
+          VITE_BASE_PATH: /Personal-Assistant/
         run: npm run build
 
       - uses: actions/configure-pages@v5

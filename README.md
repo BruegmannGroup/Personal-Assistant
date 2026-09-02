@@ -64,6 +64,31 @@ For local frontend development: copy `dashboard-web/.env.example` to `dashboard-
 fill in `VITE_WORKER_URL`, then `npm run dev` (and `npx wrangler dev` in `worker/` if you
 want to hit a local copy of the Worker instead of the deployed one).
 
+**Deploying the frontend to Heroku instead of GitHub Pages:** the Worker stays on Cloudflare
+either way (nothing there changes — CORS is already wide open, so it doesn't care which
+frontend origin calls it). Only `dashboard-web/` moves. This repo is a monorepo (the Heroku
+app root and `dashboard-web/` aren't the same directory), so it needs
+`heroku-buildpack-monorepo` to point Heroku at the right subdirectory, plus the Node and
+static buildpacks, in this order:
+```
+heroku create <app-name>
+heroku buildpacks:add -a <app-name> https://github.com/heroku/heroku-buildpack-monorepo.git
+heroku buildpacks:add -a <app-name> heroku/nodejs
+heroku buildpacks:add -a <app-name> https://github.com/heroku/heroku-buildpack-static.git
+heroku config:set -a <app-name> APP_BASE=dashboard-web
+heroku config:set -a <app-name> NPM_CONFIG_PRODUCTION=false
+heroku config:set -a <app-name> VITE_WORKER_URL=<the workers.dev URL from step 5 above>
+git push heroku main
+```
+`NPM_CONFIG_PRODUCTION=false` matters — without it, Heroku's Node buildpack skips
+devDependencies (which is where `vite`/`typescript` live), and the build step fails.
+`dashboard-web/static.json` (`{"root": "dist"}`) tells the static buildpack where the built
+site ends up; `heroku-postbuild` in `dashboard-web/package.json` is what actually runs the
+build. No `Procfile` needed — the static buildpack supplies its own web process.
+`vite.config.ts`'s `base` defaults to `/` (correct for Heroku's own domain root); only the
+GitHub Actions workflow overrides it to `/Personal-Assistant/` for GitHub Pages, so both
+targets can coexist without either breaking the other.
+
 The CLI tools (`pre_meeting.py`, `transcribe_and_extract.py`, `live_capture.py`,
 `momentum_review.py`) still work unchanged as an offline fallback if the Worker/dashboard is
 ever unavailable — they're typed/local-audio-file-based rather than browser-recording-based,
