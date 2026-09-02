@@ -1,0 +1,19 @@
+{
+  "thread_id": "bhpro",
+  "encounter_name": "Bhpro audit",
+  "datetime_local": "2026-08-20T11:51",
+  "local_timezone": "asia",
+  "location": "china",
+  "organization": "bhpro",
+  "meeting_type": "supplier",
+  "pre_meeting_purpose": "i needed update on the steel price",
+  "hypothesis": "mexico might be cheaper",
+  "success_criteria": [
+    "i am trying to learn what the price is and i habe to validate what deiciosj to take",
+    "Martin"
+  ],
+  "prior_commitments_to_check": [
+    "none"
+  ],
+  "waste_of_time_criteria": "if martin isnt present"
+}

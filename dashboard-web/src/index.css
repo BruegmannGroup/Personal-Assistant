@@ -1,0 +1,60 @@
+:root {
+  --text: #3f3d45;
+  --text-h: #0c0a10;
+  --bg: #fafafa;
+  --card-bg: #fff;
+  --border: #e2e1e6;
+  --accent: #4c6ef5;
+  --accent-hover: #3b5bdb;
+  --danger: #e03131;
+  --success-bg: #ebfbee;
+  --success-text: #2b8a3e;
+  --pending-bg: #fff9db;
+  --pending-text: #997404;
+  --empty-bg: #f1f3f5;
+  --empty-text: #868e96;
+
+  font: 16px/1.5 system-ui, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #d3d1d8;
+    --text-h: #f5f4f7;
+    --bg: #16171d;
+    --card-bg: #1e1f27;
+    --border: #2e303a;
+    --accent: #7c93fb;
+    --accent-hover: #91a4fc;
+    --success-bg: #103a1c;
+    --success-text: #6fd88a;
+    --pending-bg: #3a3210;
+    --pending-text: #e8cf5a;
+    --empty-bg: #23242c;
+    --empty-text: #8a8d99;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}

@@ -1,0 +1,17 @@
+export interface Env {
+  SMARTSHEET_API_TOKEN: string;
+  GEMINI_API_KEY: string;
+  DASHBOARD_KEY: string;
+  ENCOUNTER_SHEET_ID: string;
+  THREAD_SHEET_ID: string;
+  GEMINI_MODEL: string;
+  AUDIO_BUCKET: R2Bucket;
+}
+
+export type Stage = "pre" | "post" | "followup";
+
+export interface RecordRequestBody {
+  stage: Stage;
+  audio_base64: string;
+  mime_type: string;
+}
