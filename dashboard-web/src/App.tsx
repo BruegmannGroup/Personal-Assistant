@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import "./App.css";
 // import { KeyGate } from "./components/KeyGate";
 // import { useDashboardKey } from "./useDashboardKey";
