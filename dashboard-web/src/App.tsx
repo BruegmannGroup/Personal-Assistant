@@ -43,9 +43,9 @@ function App() {
     if (dashboardKey) void reload();
   }, [dashboardKey, reload]);
 
-  if (!dashboardKey) {
-    return <KeyGate onSubmit={setDashboardKey} />;
-  }
+  // if (!dashboardKey) {
+  //   return <KeyGate onSubmit={setDashboardKey} />;
+  // }
 
   return (
     <div className="app">
