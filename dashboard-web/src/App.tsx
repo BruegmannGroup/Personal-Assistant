@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import "./App.css";
-import { KeyGate } from "./components/KeyGate";
-import { useDashboardKey } from "./useDashboardKey";
+// import { KeyGate } from "./components/KeyGate";
+// import { useDashboardKey } from "./useDashboardKey";
 import { Home } from "./components/Home";
 import { Recorder } from "./components/Recorder";
 import { fetchEncounters, fetchFlagged, fetchThreads } from "./api";
@@ -10,7 +10,7 @@ import type { Encounter, FlaggedThread, Thread } from "./types";
 type View = "home" | "recorder";
 
 function App() {
-  const [dashboardKey, setDashboardKey] = useDashboardKey();
+  // const [dashboardKey, setDashboardKey] = useDashboardKey();
   const [view, setView] = useState<View>("home");
   const [threads, setThreads] = useState<Thread[]>([]);
   const [encounters, setEncounters] = useState<Encounter[]>([]);
@@ -39,13 +39,13 @@ function App() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    if (dashboardKey) void reload();
-  }, [dashboardKey, reload]);
+  // useEffect(() => {
+  //   if (dashboardKey) void reload();
+  // }, [dashboardKey, reload]);
 
-  if (!dashboardKey) {
-    return <KeyGate onSubmit={setDashboardKey} />;
-  }
+  // if (!dashboardKey) {
+  //   return <KeyGate onSubmit={setDashboardKey} />;
+  // }
 
   return (
     <div className="app">

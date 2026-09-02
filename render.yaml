@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: momentum-dashboard
+    runtime: static
+    rootDir: dashboard-web
+    buildCommand: npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_WORKER_URL
+        value: https://momentum-dashboard-worker.bruegmann.workers.dev
