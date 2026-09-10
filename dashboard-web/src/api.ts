@@ -1,5 +1,8 @@
 import type { Stage, Thread, Encounter, FlaggedThread } from "./types";
 
+// Empty = same origin. The dashboard and the API are served by one Worker, so
+// requests go to relative paths like /api/threads. Set VITE_WORKER_URL only when
+// running the frontend separately from the Worker (e.g. `vite dev`).
 const WORKER_URL = (import.meta.env.VITE_WORKER_URL as string | undefined) || "";
 const KEY_STORAGE = "momentum_dashboard_key";
 
@@ -12,9 +15,6 @@ export function setStoredKey(key: string): void {
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!WORKER_URL) {
-    throw new Error("VITE_WORKER_URL is not set — see dashboard-web/.env.example.");
-  }
   const key = getStoredKey();
   const resp = await fetch(`${WORKER_URL}${path}`, {
     ...init,
@@ -77,4 +77,14 @@ export function generateReview(threadId: string): Promise<{ thread_id: string; e
 export function audioUrl(key: string): string {
   const dashboardKey = getStoredKey() || "";
   return `${WORKER_URL}/api/audio?key=${encodeURIComponent(key)}&dashboard_key=${encodeURIComponent(dashboardKey)}`;
+}
+
+// Dismiss alert for a dormant thread (uses cron token auth, not dashboard key)
+export async function dismissAlert(threadId: string, cronToken: string): Promise<{ dismissed: boolean; thread_id: string }> {
+  const resp = await fetch(`${WORKER_URL}/cron/dismiss?thread_id=${encodeURIComponent(threadId)}&token=${encodeURIComponent(cronToken)}`);
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}) as { error?: string });
+    throw new Error(body.error || `Request failed: ${resp.status}`);
+  }
+  return resp.json() as Promise<{ dismissed: boolean; thread_id: string }>;
 }

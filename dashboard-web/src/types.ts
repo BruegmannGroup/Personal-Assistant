@@ -13,6 +13,7 @@ export interface Thread {
   meeting_recommendation_rationale: string | null;
   audio_recording_key: string | null;
   last_momentum_review_json: string | null;
+  alert_state: string | null;
 }
 
 export interface NonAdvanceItem {
@@ -69,11 +70,26 @@ export interface Encounter {
   datetime_local: string;
   organization?: string;
   pre_meeting_purpose?: string;
+  desired_learning?: string | null;
+  success_criteria?: string[];
+  decision_possible?: string | null;
+  hypothesis?: string;
+  view_changed?: string | null;
   decisions_made?: string[];
+  discussed_not_decided?: string[];
   commitments?: Commitment[];
+  action_classification?: string;
+  strategic_learning?: string | null;
+  followup_questions?: string[];
   topics?: string[];
   next_meeting_date?: string | null;
   current_state?: string;
+  impact_assessment?: string;
+  failure_mode?: string;
+  next_meeting_objective?: string;
+  close_restart_decision?: string;
+  momentum_status?: string;
+  recommended_next_action?: string;
   audio_recording_key?: string | null;
   [key: string]: unknown;
 }

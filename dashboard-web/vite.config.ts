@@ -3,8 +3,7 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  // GitHub Pages project site: served from https://<org>.github.io/Personal-Assistant/,
-  // not the domain root, so all asset URLs need this prefix.
-  base: "/Personal-Assistant/",
+  // Served from the root of the Worker's own hostname, so no path prefix.
+  base: "/",
   plugins: [react()],
 })

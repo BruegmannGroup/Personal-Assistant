@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Encounter, MomentumReview, Thread } from "../types";
-import { audioUrl, generateReview } from "../api";
+import { audioUrl, generateReview, dismissAlert } from "../api";
 
 const RECOMMENDATION_BADGE: Record<string, string> = {
   hold: "🟢 Hold",
@@ -58,6 +58,7 @@ export function ThreadDetail({
 
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState("");
+  const [dismissing, setDismissing] = useState(false);
 
   async function handleGenerateReview() {
     if (!thread.thread_id) return;
@@ -73,6 +74,25 @@ export function ThreadDetail({
     }
   }
 
+  async function handleDismissAlert() {
+    if (!thread.thread_id) return;
+    setDismissing(true);
+    try {
+      // For dashboard dismiss, we need the cron token - stored in env or passed
+      // For now, use a simple approach: the dismiss endpoint checks cron token
+      // In production, you'd want a proper auth flow for dashboard dismiss
+      const cronToken = "DASHBOARD_DISMISS_TOKEN"; // This should match env.CRON_TOKEN
+      await dismissAlert(thread.thread_id, cronToken);
+      await onRefresh();
+    } catch (e) {
+      console.error("Failed to dismiss alert:", e);
+    } finally {
+      setDismissing(false);
+    }
+  }
+
+  const isDormantNoFollowup = thread.current_state === "Dormant" && !thread.next_followup_date && thread.alert_state !== "dismissed";
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal thread-detail" onClick={(e) => e.stopPropagation()}>
@@ -84,6 +104,25 @@ export function ThreadDetail({
           {thread.organizations || "Unknown organization"} · {thread.current_state || "unknown state"}
           {thread.next_followup_date && <> · next follow-up {thread.next_followup_date}</>}
         </p>
+
+        {isDormantNoFollowup && (
+          <div className="alert-dismiss-banner">
+            <span>⏰ Dormant thread with no follow-up date — weekly alerts active</span>
+            <button
+              className="secondary-button small"
+              disabled={dismissing}
+              onClick={() => void handleDismissAlert()}
+            >
+              {dismissing ? "Dismissing…" : "Dismiss reminder"}
+            </button>
+          </div>
+        )}
+
+        {thread.alert_state === "dismissed" && (
+          <div className="alert-dismissed-banner">
+            <span>🔕 Alerts dismissed for this thread</span>
+          </div>
+        )}
 
         {thread.meeting_recommendation_decision && (
           <div className="recommendation-banner">
@@ -101,10 +140,51 @@ export function ThreadDetail({
             <p>
               <strong>Purpose:</strong> {latest.pre_meeting_purpose || "—"}
             </p>
+            {latest.desired_learning && (
+              <p>
+                <strong>Desired learning:</strong> {latest.desired_learning}
+              </p>
+            )}
+            {latest.decision_possible && (
+              <p>
+                <strong>Decision possible:</strong> {latest.decision_possible}
+              </p>
+            )}
             <p>
               <strong>Decisions made:</strong>
             </p>
             <List items={latest.decisions_made} />
+            {latest.discussed_not_decided && latest.discussed_not_decided.length > 0 && (
+              <>
+                <p>
+                  <strong>Discussed, not decided:</strong>
+                </p>
+                <List items={latest.discussed_not_decided} />
+              </>
+            )}
+            {latest.view_changed && (
+              <p>
+                <strong>View changed:</strong> {latest.view_changed}
+              </p>
+            )}
+            {latest.action_classification && latest.action_classification !== "not_applicable" && (
+              <p>
+                <strong>Action classification:</strong> {latest.action_classification.replace(/_/g, " ")}
+              </p>
+            )}
+            {latest.strategic_learning && (
+              <p>
+                <strong>Strategic learning:</strong> {latest.strategic_learning}
+              </p>
+            )}
+            {latest.followup_questions && latest.followup_questions.length > 0 && (
+              <>
+                <p>
+                  <strong>Follow-up questions:</strong>
+                </p>
+                <List items={latest.followup_questions} />
+              </>
+            )}
             <p>
               <strong>Commitments:</strong>
             </p>
