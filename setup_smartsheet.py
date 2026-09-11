@@ -64,15 +64,22 @@ ENCOUNTER_COLUMNS = [
     _text_column("people_present"),
     _picklist_column(
         "meeting_type",
-        ["customer", "supplier", "agent", "internal", "bd_visit", "factory_review", "dinner", "other"],
+        ["customer", "supplier", "agent", "internal", "bd_visit", "factory_review", "travel", "dinner", "informal", "other"],
     ),
     _text_column("thread_id"),
     _text_column("pre_meeting_purpose"),
     _text_column("hypothesis"),
+    _text_column("desired_learning"),
     _text_column("success_criteria"),
+    _text_column("decision_possible"),
     _text_column("observations"),
+    _text_column("view_changed"),
     _text_column("decisions_made"),
+    _text_column("discussed_not_decided"),
     _text_column("commitments_summary"),
+    _text_column("action_classification"),
+    _text_column("strategic_learning"),
+    _text_column("followup_questions"),
     _text_column("next_logical_action"),
     _picklist_column(
         "current_state",
@@ -123,6 +130,12 @@ THREAD_COLUMNS = [
     _text_column("meeting_recommendation_rationale"),
     # R2 object key for the latest follow-up recording (browser dashboard only).
     _text_column("audio_recording_key"),
+    # Alert state for dormant thread reminders
+    _picklist_column(
+        "alert_state",
+        ["active", "dismissed", "snoozed"],
+    ),
+    _date_column("last_alert_sent"),
 ]
 
 

@@ -72,11 +72,13 @@ export function generateReview(threadId: string): Promise<{ thread_id: string; e
   });
 }
 
-// <audio src> can't send the X-Dashboard-Key header, so the key travels as a
-// query param instead — the Worker's /api/audio route accepts either.
-export function audioUrl(key: string): string {
-  const dashboardKey = getStoredKey() || "";
-  return `${WORKER_URL}/api/audio?key=${encodeURIComponent(key)}&dashboard_key=${encodeURIComponent(dashboardKey)}`;
+// <audio src> can't send the X-Dashboard-Key header. Rather than putting the
+// passphrase in the URL, ask the Worker (with the header) for a signed link
+// scoped to this one recording. It expires after a few minutes, so a link that
+// leaks into history or logs stops working on its own.
+export async function fetchAudioUrl(key: string): Promise<string> {
+  const { url } = await apiFetch<{ url: string }>(`/api/audio-token?key=${encodeURIComponent(key)}`);
+  return `${WORKER_URL}${url}`;
 }
 
 // Dismiss alert for a dormant thread (uses cron token auth, not dashboard key)

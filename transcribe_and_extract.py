@@ -126,23 +126,30 @@ def call_llm_extract(system_prompt: str, transcript: str, metadata: dict = None,
             "Produce a single JSON object with two top-level keys: 'encounter_record' and 'momentum_review'.\n"
             "encounter_record MUST validate against the encounter_record_schema given below: use exactly the "
             "property names it defines, use exactly one of the listed enum values for any enum property (never "
-            "free text — e.g. meeting_type, current_state, impact_assessment, failure_mode, close_restart_decision), "
-            "match each property's declared type (arrays must be JSON arrays, not strings), and include no "
-            "properties beyond those the schema defines (additionalProperties is false) — do not invent extra "
-            "top-level keys such as 'follow_up_questions'; open questions belong as [OPEN QUESTION] entries in "
+            "free text — e.g. meeting_type, current_state, impact_assessment, failure_mode, close_restart_decision, "
+            "action_classification), match each property's declared type (arrays must be JSON arrays, not strings), "
+            "and include no properties beyond those the schema defines (additionalProperties is false) — do not invent "
+            "extra top-level keys such as 'follow_up_questions'; open questions belong as [OPEN QUESTION] entries in "
             "epistemic_log instead.\n"
             "thread_id must be a short stable slug for the company/relationship, e.g. 'bhpro', 'akwa', so this "
             "encounter groups with prior and future encounters on the same thread.\n"
             "Use any values already given in metadata verbatim (encounter_name, datetime_local, local_timezone, "
-            "location, organization, meeting_type, thread_id, etc.) rather than re-deriving them. datetime_local "
-            "is required and must never be null — if it isn't stated in the transcript or metadata, fall back to "
-            "metadata.reference_date.\n"
+            "location, organization, meeting_type, thread_id, pre_meeting_purpose, hypothesis, desired_learning, "
+            "success_criteria, decision_possible, prior_commitments_to_check) rather than re-deriving them. "
+            "datetime_local is required and must never be null — if it isn't stated in the transcript or metadata, "
+            "fall back to metadata.reference_date.\n"
             "momentum_review should conform to momentum_review_schema. Omit it (set to null) if this is a first "
             "encounter on a thread with nothing prior to review.\n"
             "next_meeting_date: if a follow-up date was promised or clearly implied in the transcript or metadata, "
             "set it (YYYY-MM-DD). Otherwise set it to null — do not guess.\n"
             "topics: 1-4 short (1-3 word) thematic tags for what was actually discussed, e.g. ['Budget', "
             "'Suppliers', 'Risks'] — not the same as thread_id or organization.\n"
+            "discussed_not_decided: topics that were merely discussed without resolution — distinct from decisions_made.\n"
+            "view_changed: what was learned that changed the executive's view — null if nothing shifted.\n"
+            "action_classification: classify the primary action from this encounter as one of: one_off, "
+            "hypothesis_part, relationship_building, strategic_initiative, qualification, commercial_development.\n"
+            "strategic_learning: a distinct strategic insight or learning from this encounter — null if none emerged.\n"
+            "followup_questions: open questions that remain after this encounter (string array).\n"
             "Label statements explicitly by type: [FACT], [ASSUMPTION], [HYPOTHESIS], [DECISION], [COMMITMENT], [OPEN QUESTION], [RECOMMENDATION].\n"
             "If something is unclear or low-confidence, add an [OPEN QUESTION] entry to epistemic_log rather than invent details.\n"
         ),
@@ -166,7 +173,7 @@ def try_parse_json_from_text(text: str):
     import re
 
     # Find code block with ```json ... ``` or top-level {
-    m = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", text)
+    m = re.search(r"```json\s*(\{[\s\S]*?\}\s*```)", text)
     if not m:
         m = re.search(r"(\{[\s\S]*\})", text)
     if not m:

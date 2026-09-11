@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import type { Stage } from "../types";
-import { postRecording, audioUrl } from "../api";
+import { postRecording } from "../api";
+import { AudioPlayer } from "./AudioPlayback";
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -191,10 +192,7 @@ export function Recorder({ onRecorded }: { onRecorded: () => void }) {
           <summary>Extracted result — thread "{result.threadId}"</summary>
           {result.note && <p className="muted">{result.note}</p>}
           {result.audioKey && (
-            <audio className="playback" controls src={audioUrl(result.audioKey)}>
-              Your browser can't play this recording. It's still saved — retrieve it at{" "}
-              {audioUrl(result.audioKey)}
-            </audio>
+            <AudioPlayer audioKey={result.audioKey} />
           )}
           <pre>{JSON.stringify(result.extracted, null, 2)}</pre>
         </details>

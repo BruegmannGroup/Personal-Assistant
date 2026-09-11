@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Pre-meeting prompt — Stage A of the three prompt moments (PDF section 6A).
+"""Pre-meeting prompt — Stage A of the three prompt moments.
 
-Run this before a meaningful meeting/visit. It asks the same six questions as
-agent/prompt.txt's "Pre Meeting" block, pulls this thread's prior commitments
-from Smartsheet automatically (if any exist) so you're checking against real
-data instead of memory, and saves a metadata file shaped exactly for
-transcribe_and_extract.py's --metadata flag — so your stated intent shows up
+Run this before a meaningful meeting/visit. It asks the seven pre-meeting
+questions, pulls this thread's prior commitments from Smartsheet automatically (if any exist) so you're checking
+against real data instead of memory, and saves a metadata file shaped exactly
+for transcribe_and_extract.py's --metadata flag — so your stated intent shows up
 in the actual encounter record instead of being reconstructed from scratch
 after the fact.
 
@@ -84,16 +83,17 @@ def main():
     location = ask("Location:")
     local_timezone = ask("Local timezone (e.g. 'Asia/Bangkok'):", required=False) or "UTC"
     meeting_type = ask(
-        "Meeting type (customer / supplier / agent / internal / bd_visit / factory_review / dinner / other):"
+        "Meeting type (customer / supplier / agent / internal / bd_visit / factory_review / travel / dinner / informal / other):"
     )
 
-    print("\n--- The six pre-meeting questions (PDF section 6A) ---")
+    print("\n--- The seven pre-meeting questions ---")
     why = ask("1. Why am I meeting them?")
     learn = ask("2. What am I trying to learn, validate, or decide?")
     hypothesis = ask("3. What hypothesis am I testing?")
     useful = ask("4. What would make this meeting useful?")
     waste = ask("5. What would make this meeting a waste of time?")
     prior_check = ask("6. What prior commitments or open threads should be checked?", required=False)
+    decision = ask("7. What decision could result from this meeting?", required=False)
 
     metadata = {
         "thread_id": thread_id,
@@ -105,7 +105,9 @@ def main():
         "meeting_type": meeting_type,
         "pre_meeting_purpose": why,
         "hypothesis": hypothesis,
-        "success_criteria": [learn, useful],
+        "desired_learning": learn,
+        "success_criteria": [useful],
+        "decision_possible": decision or None,
         "prior_commitments_to_check": [c.strip() for c in prior_check.split(",") if c.strip()],
         "waste_of_time_criteria": waste,
     }

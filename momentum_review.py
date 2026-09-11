@@ -40,14 +40,21 @@ def summarize_encounters(records: list[dict]) -> str:
     for i, r in enumerate(records, start=1):
         lines.append(f"--- Encounter {i}: {r['encounter_name']} ({r['datetime_local']}) ---")
         lines.append(f"Purpose: {r.get('pre_meeting_purpose', '')}")
+        lines.append(f"Desired learning: {r.get('desired_learning', '')}")
         lines.append(f"Hypothesis: {r.get('hypothesis', '')}")
+        lines.append(f"Decision possible: {r.get('decision_possible', '')}")
         lines.append(f"Observations: {'; '.join(r.get('observations', []))}")
+        lines.append(f"View changed: {r.get('view_changed', '')}")
         lines.append(f"Decisions made: {'; '.join(r.get('decisions_made', []))}")
+        lines.append(f"Discussed, not decided: {'; '.join(r.get('discussed_not_decided', []))}")
         commitments = r.get("commitments", [])
         commit_lines = [
             f"{c.get('description')} (owner: {c.get('owner')}, due: {c.get('due_date')})" for c in commitments
         ]
         lines.append(f"Commitments: {'; '.join(commit_lines)}")
+        lines.append(f"Action classification: {r.get('action_classification', '')}")
+        lines.append(f"Strategic learning: {r.get('strategic_learning', '')}")
+        lines.append(f"Follow-up questions: {'; '.join(r.get('followup_questions', []))}")
         lines.append(f"Evidence required: {'; '.join(r.get('evidence_required', []))}")
         lines.append(f"State at the time: {r.get('current_state')}")
         lines.append(f"Impact assessment: {r.get('impact_assessment')}")

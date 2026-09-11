@@ -14,3 +14,9 @@ live_recording_*.wav
 *.mp3
 *_pre_meeting.json
 *_momentum_review.json
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

@@ -1,6 +1,6 @@
-// Same three question sets as agent/prompt.txt (the Python side's one definition of
-// "the prompt" — copied here rather than fetched at runtime, since the Worker has no
-// access to the repo's other files at request time).
+// Same three question sets as agent/prompt.txt and agent/executive-memory-agent.system.txt
+// (the one definition of "the prompt" — copied here rather than fetched at runtime,
+// since the Worker has no access to the repo's other files at request time).
 
 export const PRE_MEETING_QUESTIONS: string[] = [
   "Why am I meeting them?",
@@ -9,6 +9,7 @@ export const PRE_MEETING_QUESTIONS: string[] = [
   "What would make this meeting useful?",
   "What would make this meeting a waste of time?",
   "What prior commitments or open threads should be checked?",
+  "What decision could result from this meeting?",
 ];
 
 export const POST_MEETING_QUESTIONS: string[] = [
@@ -17,11 +18,12 @@ export const POST_MEETING_QUESTIONS: string[] = [
   "What surprised me?",
   "What did I learn that changes my view?",
   "What was explicitly agreed?",
+  "What was merely discussed without resolution?",
   "Who owns each next step?",
   "What evidence must exist before the next follow-up?",
   "What is the next logical action?",
   "Is this still Discovery, Validation, Development, Adoption, Conclusion, or Dormant?",
-  "Was any dates promised for next meeting or for action items to succeed to next stage?",
+  "Was any date promised for the next meeting or for action items to succeed to the next stage?",
 ];
 
 export const FOLLOWUP_QUESTIONS: string[] = [

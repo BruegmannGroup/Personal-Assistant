@@ -10,7 +10,9 @@ import {
 } from "./prompts";
 import type { PendingBriefContext } from "./prompts";
 import { saveAudioRecording, loadAudioRecording } from "./audio";
+import { buildSignedAudioUrl, verifyAudioSignature } from "./signedUrl";
 import { getFlaggedThreads } from "./reminders";
+import { getDormantThreads, dismissThreadAlert, setThreadAlertState } from "./alerts";
 import {
   getThreads,
   getEncounters,
@@ -20,6 +22,7 @@ import {
   pushMomentumReview,
 } from "./smartsheet";
 import type { ThreadRow } from "./smartsheet";
+import { sendDormantAlert } from "./alertService";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -43,10 +46,17 @@ function summarizeEncounters(records: any[]): string {
       return [
         `--- Encounter ${i + 1}: ${r.encounter_name} (${r.datetime_local}) ---`,
         `Purpose: ${r.pre_meeting_purpose || ""}`,
+        `Desired learning: ${r.desired_learning || ""}`,
         `Hypothesis: ${r.hypothesis || ""}`,
+        `Decision possible: ${r.decision_possible || ""}`,
         `Observations: ${(r.observations || []).join("; ")}`,
+        `View changed: ${r.view_changed || ""}`,
         `Decisions made: ${(r.decisions_made || []).join("; ")}`,
+        `Discussed, not decided: ${(r.discussed_not_decided || []).join("; ")}`,
         `Commitments: ${commitLines}`,
+        `Action classification: ${r.action_classification || ""}`,
+        `Strategic learning: ${r.strategic_learning || ""}`,
+        `Follow-up questions: ${(r.followup_questions || []).join("; ")}`,
         `Evidence required: ${(r.evidence_required || []).join("; ")}`,
         `State at the time: ${r.current_state}`,
         `Impact assessment: ${r.impact_assessment}`,
@@ -194,12 +204,57 @@ async function handleAudioGet(env: Env, key: string): Promise<Response> {
   });
 }
 
-function checkAuth(request: Request, env: Env, url: URL): boolean {
-  // <audio src> can't attach custom headers, so the audio route also accepts
-  // the key as a query param — every other route requires the header.
-  const headerKey = request.headers.get("X-Dashboard-Key");
-  const queryKey = url.searchParams.get("dashboard_key");
-  return headerKey === env.DASHBOARD_KEY || queryKey === env.DASHBOARD_KEY;
+function checkAuth(request: Request, env: Env): boolean {
+  // Header only. The audio route used to accept the passphrase as a query param
+  // so that <audio src> could authenticate, which left a long-lived secret in
+  // browser history, logs and Referer headers. Signed URLs replace it — the
+  // route is reached with a short-lived per-object signature instead. See
+  // signedUrl.ts.
+  return request.headers.get("X-Dashboard-Key") === env.DASHBOARD_KEY;
+}
+
+function checkCronAuth(request: Request, env: Env, url: URL): boolean {
+  // Cron jobs authenticate via token query param (cron-job.org can't set custom headers)
+  const queryToken = url.searchParams.get("token");
+  const headerToken = request.headers.get("X-Cron-Token");
+  return queryToken === env.CRON_TOKEN || headerToken === env.CRON_TOKEN;
+}
+
+async function handleDailyAlerts(env: Env, requestUrl: string): Promise<Response> {
+  const dormant = await getDormantThreads(env);
+
+  if (!dormant.length) {
+    return json({ sent: false, reason: "No dormant threads need alerts" });
+  }
+
+  // Derive worker URL from the incoming request
+  const url = new URL(requestUrl);
+  const workerUrl = `${url.protocol}//${url.host}`;
+
+  try {
+    await sendDormantAlert(
+      env.SENDGRID_API_KEY,
+      env.ALERT_FROM_EMAIL,
+      env.ALERT_TO_EMAIL,
+      dormant,
+      workerUrl,
+      env.CRON_TOKEN
+    );
+
+    // Update last_alert_sent for each thread
+    for (const t of dormant) {
+      await setThreadAlertState(env, t.thread_id, "active");
+    }
+
+    return json({ sent: true, thread_count: dormant.length, threads: dormant.map((d) => d.thread_id) });
+  } catch (err: any) {
+    return json({ sent: false, error: err?.message || String(err) }, 500);
+  }
+}
+
+async function handleDismissAlert(env: Env, threadId: string): Promise<Response> {
+  await dismissThreadAlert(env, threadId);
+  return json({ dismissed: true, thread_id: threadId });
 }
 
 export default {
@@ -210,7 +265,20 @@ export default {
 
     const url = new URL(request.url);
 
-    if (!checkAuth(request, env, url)) {
+    // A signed /api/audio link carries its own short-lived, per-object proof, so
+    // it is the one route that does not need the dashboard key. Everything else
+    // still does.
+    const signedAudio =
+      url.pathname === "/api/audio" &&
+      request.method === "GET" &&
+      (await verifyAudioSignature(
+        env,
+        url.searchParams.get("key") || "",
+        url.searchParams.get("exp"),
+        url.searchParams.get("sig")
+      ));
+
+    if (!signedAudio && !checkAuth(request, env)) {
       return json({ error: "Unauthorized — missing or incorrect dashboard key" }, 401);
     }
 
@@ -238,10 +306,35 @@ export default {
         return await handleGenerateReview(env, body.thread_id);
       }
 
+      // The dashboard asks for a signed link (with the header) and then points
+      // <audio src> at it. Expires after a few minutes.
+      if (url.pathname === "/api/audio-token" && request.method === "GET") {
+        const key = url.searchParams.get("key");
+        if (!key) return json({ error: "key query param is required" }, 400);
+        return json({ url: await buildSignedAudioUrl(env, key) });
+      }
+
       if (url.pathname === "/api/audio" && request.method === "GET") {
         const key = url.searchParams.get("key");
         if (!key) return json({ error: "key query param is required" }, 400);
         return await handleAudioGet(env, key);
+      }
+
+      // Cron job endpoints (for cron-job.org)
+      if (url.pathname === "/cron/daily-alerts" && request.method === "GET") {
+        if (!checkCronAuth(request, env, url)) {
+          return json({ error: "Unauthorized" }, 401);
+        }
+        return await handleDailyAlerts(env, request.url);
+      }
+
+      if (url.pathname === "/cron/dismiss" && request.method === "GET") {
+        if (!checkCronAuth(request, env, url)) {
+          return json({ error: "Unauthorized" }, 401);
+        }
+        const threadId = url.searchParams.get("thread_id");
+        if (!threadId) return json({ error: "thread_id is required" }, 400);
+        return await handleDismissAlert(env, threadId);
       }
 
       return json({ error: "Not found" }, 404);

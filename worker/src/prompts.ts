@@ -34,9 +34,11 @@ export function buildPrePrompt(threads: ThreadRow[]): string {
         THREAD_MATCHING_INSTRUCTIONS +
         "\nProduce a single JSON object with exactly these keys and no others: " +
         "thread_id (string, per the matching rule above), organization (string), " +
-        "pre_meeting_purpose (string, answer to Q1+Q2), hypothesis (string, answer to Q3), " +
-        "success_criteria (string array, from Q2 and Q4), waste_of_time_criteria (string, answer to Q5), " +
-        "prior_commitments_to_check (string array, answer to Q6, empty array if none mentioned). " +
+        "pre_meeting_purpose (string, answer to Q1), desired_learning (string, answer to Q2), " +
+        "hypothesis (string, answer to Q3), success_criteria (string array, from Q4), " +
+        "waste_of_time_criteria (string, answer to Q5), " +
+        "prior_commitments_to_check (string array, answer to Q6, empty array if none mentioned), " +
+        "decision_possible (string or null, answer to Q7). " +
         "Use the user's own words, cleaned up into complete sentences — do not invent content they didn't say.",
       existing_threads: formatThreadsForMatching(threads),
     },
@@ -63,23 +65,27 @@ export function buildPostPrompt(
         `debrief questions:\n${numbered(POST_MEETING_QUESTIONS)}\n` +
         THREAD_MATCHING_INSTRUCTIONS +
         "\nIf the thread_id you resolve has an entry in pending_pre_meeting_briefs below, use that brief's " +
-        "fields verbatim for pre_meeting_purpose/hypothesis/success_criteria rather than re-deriving them " +
-        "from this audio — it was recorded before this meeting for exactly this purpose.\n" +
+        "fields verbatim for pre_meeting_purpose/hypothesis/desired_learning/success_criteria/decision_possible " +
+        "rather than re-deriving them from this audio — it was recorded before this meeting for exactly this purpose.\n" +
         "Produce a single JSON object with two top-level keys: 'encounter_record' and 'momentum_review'.\n" +
         "encounter_record MUST validate against encounter_record_schema below: use exactly the property names " +
         "it defines, use exactly one of the listed enum values for any enum property (never free text), match " +
         "each property's declared type (arrays must be JSON arrays, not strings), and include no properties " +
         "beyond those the schema defines (additionalProperties is false).\n" +
         "This audio is the user's own spoken answers directly mapping onto the schema fields (Q1->observations, " +
-        "Q2->people_present, Q3/Q4->observations, Q5->decisions_made, Q6->commitments (owner per item), " +
-        "Q7->evidence_required, Q8->next_logical_action, Q9->current_state, Q10->next_meeting_date) — this is " +
-        "direct extraction, not inference from a raw conversation transcript.\n" +
+        "Q2->people_present, Q3->observations, Q4->view_changed, Q5->decisions_made, Q6->discussed_not_decided, " +
+        "Q7->commitments (owner per item), Q8->evidence_required, Q9->next_logical_action, Q10->current_state, " +
+        "Q11->next_meeting_date) — this is direct extraction, not inference from a raw conversation transcript.\n" +
         "encounter_name: a short descriptive title if not obvious from context, e.g. '<organization> check-in'. " +
         "local_timezone/meeting_type/momentum_status/recommended_next_action/failure_mode: infer a reasonable " +
         "value if not explicitly stated — never leave a required field null.\n" +
         `datetime_local is required and must never be null — if not stated, use ${referenceDate}.\n` +
-        "next_meeting_date: if a follow-up date was promised or implied (Q10), set it (YYYY-MM-DD), else null.\n" +
+        "next_meeting_date: if a follow-up date was promised or implied (Q11), set it (YYYY-MM-DD), else null.\n" +
         "topics: 1-4 short (1-3 word) thematic tags for what was discussed.\n" +
+        "action_classification: classify the primary action as one of: one_off, hypothesis_part, " +
+        "relationship_building, strategic_initiative, qualification, commercial_development.\n" +
+        "strategic_learning: a distinct strategic insight or learning — null if none emerged.\n" +
+        "followup_questions: open questions that remain (string array).\n" +
         "momentum_review should conform to momentum_review_schema. Omit it (set to null) if this is a first " +
         "encounter on this thread with no prior history to review.\n" +
         "Label statements explicitly by type: [FACT], [ASSUMPTION], [HYPOTHESIS], [DECISION], [COMMITMENT], " +

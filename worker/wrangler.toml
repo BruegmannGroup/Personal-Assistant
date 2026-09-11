@@ -1,6 +1,16 @@
 name = "momentum-dashboard-worker"
 main = "src/index.ts"
-compatibility_date = "2024-11-01"
+compatibility_date = "2026-09-08"
+account_id = "ccda4bb40ec77a1929126c6f50623fa2"
+workers_dev = true
+
+# Serves the built React dashboard (dashboard-web/dist) from this same Worker.
+# /api/* and /cron/* hit the script; everything else falls through to the SPA.
+[assets]
+directory = "../dashboard-web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/cron/*"]
 
 # Not secret — same IDs already in smartsheet_config.json. Safe to commit.
 [vars]
@@ -13,7 +23,3 @@ GEMINI_MODEL = "gemini-3.5-flash-lite"
 binding = "AUDIO_BUCKET"
 bucket_name = "momentum-dashboard-audio"
 
-# Secrets (never put these here — set via `wrangler secret put <NAME>`):
-#   SMARTSHEET_API_TOKEN
-#   GEMINI_API_KEY
-#   DASHBOARD_KEY   (a passphrase you invent; the frontend asks for it once)

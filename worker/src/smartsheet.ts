@@ -13,7 +13,7 @@ function headers(env: Env): HeadersInit {
   };
 }
 
-async function req(env: Env, path: string, init?: RequestInit): Promise<any> {
+export async function req(env: Env, path: string, init?: RequestInit): Promise<any> {
   const resp = await fetch(`${API}${path}`, { ...init, headers: headers(env) });
   if (!resp.ok) {
     throw new Error(`Smartsheet ${init?.method || "GET"} ${path} failed: ${resp.status} ${await resp.text()}`);
@@ -39,12 +39,12 @@ function cellsFromFields(columnMap: Record<string, number>, fields: Record<strin
   return cells;
 }
 
-async function getAllRows(env: Env, sheetId: string): Promise<any[]> {
+export async function getAllRows(env: Env, sheetId: string): Promise<any[]> {
   const data = await req(env, `/sheets/${sheetId}`);
   return data.rows || [];
 }
 
-function rowCellValue(row: any, columnMap: Record<string, number>, title: string) {
+export function rowCellValue(row: any, columnMap: Record<string, number>, title: string) {
   const colId = columnMap[title];
   for (const cell of row.cells || []) {
     if (cell.columnId === colId) return cell.value ?? null;
@@ -90,6 +90,7 @@ export interface ThreadRow {
   meeting_recommendation_rationale: string | null;
   audio_recording_key: string | null;
   last_momentum_review_json: string | null;
+  alert_state: string | null;
 }
 
 export async function getThreads(env: Env): Promise<ThreadRow[]> {
@@ -108,6 +109,7 @@ export async function getThreads(env: Env): Promise<ThreadRow[]> {
     meeting_recommendation_rationale: rowCellValue(row, columnMap, "meeting_recommendation_rationale"),
     audio_recording_key: rowCellValue(row, columnMap, "audio_recording_key"),
     last_momentum_review_json: rowCellValue(row, columnMap, "last_momentum_review_json"),
+    alert_state: rowCellValue(row, columnMap, "alert_state"),
   }));
 }
 
@@ -172,10 +174,17 @@ export async function pushEncounter(env: Env, record: any): Promise<void> {
     thread_id: record.thread_id,
     pre_meeting_purpose: record.pre_meeting_purpose || "",
     hypothesis: record.hypothesis || "",
+    desired_learning: record.desired_learning || "",
     success_criteria: (record.success_criteria || []).join("\n"),
+    decision_possible: record.decision_possible || "",
     observations: (record.observations || []).join("\n"),
+    view_changed: record.view_changed || "",
     decisions_made: (record.decisions_made || []).join("\n"),
+    discussed_not_decided: (record.discussed_not_decided || []).join("\n"),
     commitments_summary: commitmentsSummary(record.commitments),
+    action_classification: record.action_classification || "",
+    strategic_learning: record.strategic_learning || "",
+    followup_questions: (record.followup_questions || []).join("\n"),
     next_logical_action: record.next_logical_action || "",
     current_state: record.current_state,
     impact_assessment: record.impact_assessment,

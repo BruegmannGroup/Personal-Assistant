@@ -62,7 +62,9 @@
         "internal",
         "bd_visit",
         "factory_review",
+        "travel",
         "dinner",
+        "informal",
         "other"
       ]
     },
@@ -76,11 +78,19 @@
     "hypothesis": {
       "type": "string"
     },
+    "desired_learning": {
+      "type": ["string", "null"],
+      "description": "What Christopher specifically wants to learn, validate, or understand — distinct from success criteria."
+    },
     "success_criteria": {
       "type": "array",
       "items": {
         "type": "string"
       }
+    },
+    "decision_possible": {
+      "type": ["string", "null"],
+      "description": "A decision that could result from this meeting, if one was identified beforehand."
     },
     "prior_commitments_checked": {
       "type": "array",
@@ -94,11 +104,22 @@
         "type": "string"
       }
     },
+    "view_changed": {
+      "type": ["string", "null"],
+      "description": "What was learned that changed Christopher's view — null if nothing shifted."
+    },
     "decisions_made": {
       "type": "array",
       "items": {
         "type": "string"
       }
+    },
+    "discussed_not_decided": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Topics that were merely discussed without resolution — distinct from decisions_made."
     },
     "commitments": {
       "type": "array",
@@ -144,6 +165,30 @@
     "next_logical_action": {
       "type": "string"
     },
+    "action_classification": {
+      "type": "string",
+      "enum": [
+        "one_off",
+        "hypothesis_part",
+        "relationship_building",
+        "strategic_initiative",
+        "qualification",
+        "commercial_development",
+        "not_applicable"
+      ],
+      "description": "Whether this action is a one-off task, part of a larger hypothesis, relationship-building, strategic initiative, supplier/customer qualification, or commercial development."
+    },
+    "strategic_learning": {
+      "type": ["string", "null"],
+      "description": "A distinct strategic insight or learning from this encounter — null if none emerged."
+    },
+    "followup_questions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Open questions that remain after this encounter — distinct from epistemic_log which labels all statement types."
+    },
     "current_state": {
       "type": "string",
       "enum": [
@@ -182,7 +227,7 @@
     "next_meeting_date": {
       "type": ["string", "null"],
       "format": "date",
-      "description": "When the follow-up meeting should occur, if a date was promised or implied (PDF Post Meeting Q10). Null if none was set."
+      "description": "When the follow-up meeting should occur, if a date was promised or implied. Null if none was set."
     },
     "topics": {
       "type": "array",
