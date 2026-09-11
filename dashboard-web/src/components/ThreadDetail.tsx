@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { Encounter, MomentumReview, Thread } from "../types";
-import { generateReview, dismissAlert } from "../api";
-import { AudioPlayer } from "./AudioPlayback";
+import { audioUrl, generateReview, dismissAlert } from "../api";
 
 const RECOMMENDATION_BADGE: Record<string, string> = {
   hold: "🟢 Hold",
@@ -201,7 +200,7 @@ export function ThreadDetail({
             ) : (
               <p className="muted">None recorded.</p>
             )}
-            {latest.audio_recording_key && <AudioPlayer audioKey={latest.audio_recording_key} />}
+            {latest.audio_recording_key && <audio className="playback" controls src={audioUrl(latest.audio_recording_key)} />}
           </section>
         )}
 

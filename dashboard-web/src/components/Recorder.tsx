@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import type { Stage } from "../types";
-import { postRecording } from "../api";
-import { AudioPlayer } from "./AudioPlayback";
+import { postRecording, audioUrl } from "../api";
 
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -192,7 +191,7 @@ export function Recorder({ onRecorded }: { onRecorded: () => void }) {
           <summary>Extracted result — thread "{result.threadId}"</summary>
           {result.note && <p className="muted">{result.note}</p>}
           {result.audioKey && (
-            <AudioPlayer audioKey={result.audioKey} />
+            <audio className="playback" controls src={audioUrl(result.audioKey)} />
           )}
           <pre>{JSON.stringify(result.extracted, null, 2)}</pre>
         </details>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Encounter, FlaggedThread, Thread } from "../types";
-import { AudioLink } from "./AudioPlayback";
+import { audioUrl } from "../api";
 import { ThreadDetail } from "./ThreadDetail";
 
 type CycleStatus = "none" | "pre_only" | "both";
@@ -40,13 +40,17 @@ function ThreadStatusRow({
       <td>
         {thread.thread_id}
         {thread.audio_recording_key && (
-          <AudioLink
-            audioKey={thread.audio_recording_key}
+          <a
+            className="listen-link"
+            href={audioUrl(thread.audio_recording_key)}
+            target="_blank"
+            rel="noreferrer"
             title="Listen to latest follow-up recording"
+            onClick={(e) => e.stopPropagation()}
           >
             {" "}
             🔊
-          </AudioLink>
+          </a>
         )}
       </td>
       <td>{thread.organizations || "—"}</td>

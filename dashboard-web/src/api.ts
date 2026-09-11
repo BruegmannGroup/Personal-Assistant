@@ -2,27 +2,14 @@ import type { Stage, Thread, Encounter, FlaggedThread } from "./types";
 
 // Empty = same origin. The dashboard and the API are served by one Worker, so
 // requests go to relative paths like /api/threads. Set VITE_WORKER_URL only when
-// running the frontend separately from the Worker (e.g. `vite dev`).
+// running the frontend separately from the Worker (e.g. `vite dev`) — note that
+// Access cookies will not be sent cross-origin, so dev needs its own approach.
 const WORKER_URL = (import.meta.env.VITE_WORKER_URL as string | undefined) || "";
-const KEY_STORAGE = "momentum_dashboard_key";
-
-export function getStoredKey(): string | null {
-  return localStorage.getItem(KEY_STORAGE);
-}
-
-export function setStoredKey(key: string): void {
-  localStorage.setItem(KEY_STORAGE, key);
-}
-
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const key = getStoredKey();
-  const resp = await fetch(`${WORKER_URL}${path}`, {
-    ...init,
-    headers: {
-      ...(init?.headers || {}),
-      "X-Dashboard-Key": key || "",
-    },
-  });
+  // Cloudflare Access authenticates the request: same-origin calls carry the
+  // CF_Authorization cookie automatically, and Access adds a signed JWT the
+  // Worker verifies. There is no application-level passphrase any more.
+  const resp = await fetch(`${WORKER_URL}${path}`, init);
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}) as { error?: string });
     throw new Error(body.error || `Request failed: ${resp.status}`);
@@ -72,13 +59,10 @@ export function generateReview(threadId: string): Promise<{ thread_id: string; e
   });
 }
 
-// <audio src> can't send the X-Dashboard-Key header. Rather than putting the
-// passphrase in the URL, ask the Worker (with the header) for a signed link
-// scoped to this one recording. It expires after a few minutes, so a link that
-// leaks into history or logs stops working on its own.
-export async function fetchAudioUrl(key: string): Promise<string> {
-  const { url } = await apiFetch<{ url: string }>(`/api/audio-token?key=${encodeURIComponent(key)}`);
-  return `${WORKER_URL}${url}`;
+// No secret in the URL: <audio src> and <a href> are same-origin, so the browser
+// attaches the Access cookie for us and the Worker verifies it like any other request.
+export function audioUrl(key: string): string {
+  return `${WORKER_URL}/api/audio?key=${encodeURIComponent(key)}`;
 }
 
 // Dismiss alert for a dormant thread (uses cron token auth, not dashboard key)
