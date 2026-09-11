@@ -18,6 +18,11 @@ ENCOUNTER_SHEET_ID = "3782427792068484"
 THREAD_SHEET_ID = "4656101717921668"
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 
+# Cloudflare Access. ACCESS_AUD is the "Application Audience (AUD) Tag" of the
+# "Momentum Dashboard" application — copy it from Zero Trust and paste it here.
+ACCESS_TEAM_DOMAIN = "steep-moon-1fac.cloudflareaccess.com"
+ACCESS_AUD = "09203af7430f5c06cd24e629210d44092dd3b7e8a1b888d512b6a029986fe5aa"
+
 # Create once with: npx wrangler r2 bucket create momentum-dashboard-audio
 [[r2_buckets]]
 binding = "AUDIO_BUCKET"

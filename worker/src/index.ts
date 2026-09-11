@@ -10,7 +10,7 @@ import {
 } from "./prompts";
 import type { PendingBriefContext } from "./prompts";
 import { saveAudioRecording, loadAudioRecording } from "./audio";
-import { buildSignedAudioUrl, verifyAudioSignature } from "./signedUrl";
+import { verifyAccessJwt } from "./accessJwt";
 import { getFlaggedThreads } from "./reminders";
 import { getDormantThreads, dismissThreadAlert, setThreadAlertState } from "./alerts";
 import {
@@ -27,7 +27,7 @@ import { sendDormantAlert } from "./alertService";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Dashboard-Key",
+  "Access-Control-Allow-Headers": "Content-Type",
 };
 
 function json(data: unknown, status = 200): Response {
@@ -204,15 +204,6 @@ async function handleAudioGet(env: Env, key: string): Promise<Response> {
   });
 }
 
-function checkAuth(request: Request, env: Env): boolean {
-  // Header only. The audio route used to accept the passphrase as a query param
-  // so that <audio src> could authenticate, which left a long-lived secret in
-  // browser history, logs and Referer headers. Signed URLs replace it — the
-  // route is reached with a short-lived per-object signature instead. See
-  // signedUrl.ts.
-  return request.headers.get("X-Dashboard-Key") === env.DASHBOARD_KEY;
-}
-
 function checkCronAuth(request: Request, env: Env, url: URL): boolean {
   // Cron jobs authenticate via token query param (cron-job.org can't set custom headers)
   const queryToken = url.searchParams.get("token");
@@ -265,21 +256,15 @@ export default {
 
     const url = new URL(request.url);
 
-    // A signed /api/audio link carries its own short-lived, per-object proof, so
-    // it is the one route that does not need the dashboard key. Everything else
-    // still does.
-    const signedAudio =
-      url.pathname === "/api/audio" &&
-      request.method === "GET" &&
-      (await verifyAudioSignature(
-        env,
-        url.searchParams.get("key") || "",
-        url.searchParams.get("exp"),
-        url.searchParams.get("sig")
-      ));
-
-    if (!signedAudio && !checkAuth(request, env)) {
-      return json({ error: "Unauthorized — missing or incorrect dashboard key" }, 401);
+    // /cron/* is deliberately bypassed at the Access layer, because the external
+    // scheduler cannot complete an interactive login. Those routes authenticate
+    // themselves with CRON_TOKEN further down. Everything else must arrive with
+    // a Cloudflare Access session that verifies against the account's JWKS.
+    if (!url.pathname.startsWith("/cron/")) {
+      const identity = await verifyAccessJwt(request, env);
+      if (!identity) {
+        return json({ error: "Unauthorized — no valid Cloudflare Access session" }, 403);
+      }
     }
 
     try {
@@ -304,14 +289,6 @@ export default {
         const body = (await request.json()) as { thread_id?: string };
         if (!body.thread_id) return json({ error: "thread_id is required" }, 400);
         return await handleGenerateReview(env, body.thread_id);
-      }
-
-      // The dashboard asks for a signed link (with the header) and then points
-      // <audio src> at it. Expires after a few minutes.
-      if (url.pathname === "/api/audio-token" && request.method === "GET") {
-        const key = url.searchParams.get("key");
-        if (!key) return json({ error: "key query param is required" }, 400);
-        return json({ url: await buildSignedAudioUrl(env, key) });
       }
 
       if (url.pathname === "/api/audio" && request.method === "GET") {
