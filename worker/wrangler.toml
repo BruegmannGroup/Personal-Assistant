@@ -21,7 +21,8 @@ GEMINI_MODEL = "gemini-3.5-flash-lite"
 # Cloudflare Access. ACCESS_AUD is the "Application Audience (AUD) Tag" of the
 # "Momentum Dashboard" application — copy it from Zero Trust and paste it here.
 ACCESS_TEAM_DOMAIN = "steep-moon-1fac.cloudflareaccess.com"
-ACCESS_AUD = "09203af7430f5c06cd24e629210d44092dd3b7e8a1b888d512b6a029986fe5aa"
+# Both Access applications that cover this hostname, comma-separated.
+ACCESS_AUD = "bb4c7ca6e7119b25022b10ac212ca4476fe310ccf5ac097986e0f0255e1cb9e3,09203af7430f5c06cd24e629210d44092dd3b7e8a1b888d512b6a029986fe5aa"
 
 # Create once with: npx wrangler r2 bucket create momentum-dashboard-audio
 [[r2_buckets]]

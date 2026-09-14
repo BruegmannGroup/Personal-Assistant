@@ -262,8 +262,12 @@ export default {
     // a Cloudflare Access session that verifies against the account's JWKS.
     if (!url.pathname.startsWith("/cron/")) {
       const identity = await verifyAccessJwt(request, env);
-      if (!identity) {
-        return json({ error: "Unauthorized — no valid Cloudflare Access session" }, 403);
+      if (typeof identity === "string") {
+        // The reason matters when debugging: "no-token" means Access did not
+        // forward a session (so Access itself is not in front of this request),
+        // while "invalid-token" almost always means ACCESS_AUD does not match
+        // the Application Audience tag of the app that issued it.
+        return json({ error: "Unauthorized — Cloudflare Access session " + identity }, 403);
       }
     }
 

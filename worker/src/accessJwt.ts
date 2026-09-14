@@ -23,6 +23,8 @@ export interface AccessIdentity {
   subject: string;
 }
 
+export type AccessFailure = "not-configured" | "no-token" | "invalid-token";
+
 function readToken(request: Request): string | null {
   // Fetch/XHR requests carry the assertion header. Browser-initiated requests
   // (<audio src>, <a href>) carry the CF_Authorization cookie instead — which
@@ -35,23 +37,38 @@ function readToken(request: Request): string | null {
   return match ? match[1] : null;
 }
 
-/** Returns the verified Access identity, or null if the request has none. */
-export async function verifyAccessJwt(request: Request, env: Env): Promise<AccessIdentity | null> {
-  if (!env.ACCESS_TEAM_DOMAIN || !env.ACCESS_AUD) return null;
+/**
+ * Returns the verified Access identity, or a reason it could not be established.
+ *
+ * ACCESS_AUD may list more than one Application Audience tag, comma-separated.
+ * Two Access applications cover this hostname (one for the app, one scoped to
+ * /cron/*), so which one issues a given token depends on the path that was
+ * requested. Accepting either tag avoids depending on that detail.
+ */
+export async function verifyAccessJwt(
+  request: Request,
+  env: Env
+): Promise<AccessIdentity | AccessFailure> {
+  if (!env.ACCESS_TEAM_DOMAIN || !env.ACCESS_AUD) return "not-configured";
+
+  const audiences = env.ACCESS_AUD.split(",")
+    .map((a) => a.trim())
+    .filter(Boolean);
+  if (!audiences.length) return "not-configured";
 
   const token = readToken(request);
-  if (!token) return null;
+  if (!token) return "no-token";
 
   try {
     const { payload } = await jwtVerify(token, jwks(env.ACCESS_TEAM_DOMAIN), {
       issuer: `https://${env.ACCESS_TEAM_DOMAIN}`,
-      audience: env.ACCESS_AUD,
+      audience: audiences,
     });
     return {
       email: typeof payload.email === "string" ? payload.email : "",
       subject: typeof payload.sub === "string" ? payload.sub : "",
     };
   } catch {
-    return null;
+    return "invalid-token";
   }
 }
