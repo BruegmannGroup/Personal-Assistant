@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a Momentum Review for a thread before your next meeting with it.
 
-This is the "prevent restart theater" feature from the PDF: it pulls every prior
+Pulls every prior
 Encounter Record for a thread (e.g. bhpro) from Smartsheet, and asks the LLM to
 run the Follow-up Maturity prompt against that history — did the agreed work
 happen, did it create real progress, and should the next meeting continue,

@@ -16,7 +16,7 @@ Usage examples:
   python transcribe_and_extract.py --transcript-file notes.txt --llm-provider openai --llm-model gpt-4o
 
 Notes:
-- This is a prototype. It assumes a single speaker (no diarization needed).
+- Assumes a single speaker (no diarization needed).
 - LLM provider defaults to $LLM_PROVIDER (gemini/openai/anthropic), or gemini if unset —
   see llm_client.py. Provide that provider's API key in environment or via .env.
 - The script loads the system prompt from agent/executive-memory-agent.system.txt in the repo.

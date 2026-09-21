@@ -4,6 +4,23 @@ compatibility_date = "2026-09-08"
 account_id = "ccda4bb40ec77a1929126c6f50623fa2"
 workers_dev = true
 
+# Custom domain. *.workers.dev is blocked on some networks (it gets abused for
+# phishing, so filtering appliances block the whole zone), which makes the
+# dashboard unreachable from those networks. A normal subdomain of a company
+# domain is not filtered, and it also survives a workers.dev subdomain rename.
+#
+# Requires bruegmann-group.com to be an active zone on this Cloudflare account.
+# `wrangler deploy` then creates the custom domain and its DNS record for you.
+# workers_dev stays true during the switchover; turn it off once the custom
+# domain is confirmed working and every caller has been moved across.
+# DISABLED: bruegmann-group.com is not a zone on this Cloudflare account (the
+# account has no domains at all), so wrangler cannot create this custom domain
+# and `deploy` fails with a "could not find zone" error. Re-enable only once a
+# domain is actually added to this account.
+# routes = [
+#   { pattern = "momentum.bruegmann-group.com", custom_domain = true }
+# ]
+
 # Serves the built React dashboard (dashboard-web/dist) from this same Worker.
 # /api/* and /cron/* hit the script; everything else falls through to the SPA.
 [assets]

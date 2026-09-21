@@ -2,11 +2,8 @@
 """Pre-meeting prompt — Stage A of the three prompt moments.
 
 Run this before a meaningful meeting/visit. It asks the seven pre-meeting
-questions, pulls this thread's prior commitments from Smartsheet automatically (if any exist) so you're checking
-against real data instead of memory, and saves a metadata file shaped exactly
-for transcribe_and_extract.py's --metadata flag — so your stated intent shows up
-in the actual encounter record instead of being reconstructed from scratch
-after the fact.
+questions, pulls this thread's prior commitments from Smartsheet automatically (if any exist),
+and saves a metadata file shaped for transcribe_and_extract.py's --metadata flag.
 
 Usage:
   python pre_meeting.py
