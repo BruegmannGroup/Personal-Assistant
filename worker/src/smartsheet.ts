@@ -13,13 +13,36 @@ function headers(env: Env): HeadersInit {
   };
 }
 
-export async function req(env: Env, path: string, init?: RequestInit): Promise<any> {
-  const resp = await fetch(`${API}${path}`, { ...init, headers: headers(env) });
-  if (!resp.ok) {
-    throw new Error(`Smartsheet ${init?.method || "GET"} ${path} failed: ${resp.status} ${await resp.text()}`);
+/**
+ * Smartsheet API call with retry on transient 5xx errors (notably errorCode 4000
+ * "An unexpected error has occurred"). Retries 3 times with 1s and 2s backoff —
+ * enough to ride out momentary Smartsheet blips without making the handler feel
+ * slow for the normal case (first attempt succeeds).
+ */
+async function reqWithRetry(env: Env, path: string, init?: RequestInit): Promise<any> {
+  const attempts = [0, 1000, 2000]; // ms to wait before retry 1 and 2
+  for (let i = 0; i < attempts.length; i++) {
+    const resp = await fetch(`${API}${path}`, { ...init, headers: headers(env) });
+    if (resp.ok) {
+      if (resp.status === 204) return null;
+      return resp.json();
+    }
+    // 5xx = server-side Smartsheet problem — retry; 4xx = our mistake, fail fast.
+    if (resp.status < 500) {
+      const body = await resp.text();
+      throw new Error(`Smartsheet ${init?.method || "GET"} ${path} failed: ${resp.status} ${body}`);
+    }
+    if (i < attempts.length - 1) {
+      await new Promise((r) => setTimeout(r, attempts[i + 1]));
+    }
   }
-  if (resp.status === 204) return null;
-  return resp.json();
+  // All retries exhausted — last response wins.
+  const body = await resp.text();
+  throw new Error(`Smartsheet ${init?.method || "GET"} ${path} failed: ${resp.status} ${body}`);
+}
+
+export async function req(env: Env, path: string, init?: RequestInit): Promise<any> {
+  return reqWithRetry(env, path, init);
 }
 
 export async function getColumnMap(env: Env, sheetId: string): Promise<Record<string, number>> {
@@ -60,8 +83,7 @@ async function findThreadRow(env: Env, columnMap: Record<string, number>, thread
   return null;
 }
 
-async function upsertThreadRow(env: Env, threadId: string, fields: Record<string, any>) {
-  const columnMap = await getColumnMap(env, env.THREAD_SHEET_ID);
+async function upsertThreadRow(env: Env, threadId: string, fields: Record<string, any>, columnMap: Record<string, number>) {
   const cells = cellsFromFields(columnMap, { Title: threadId, thread_id: threadId, ...fields });
   const existing = await findThreadRow(env, columnMap, threadId);
   if (existing) {
@@ -95,6 +117,10 @@ export interface ThreadRow {
 
 export async function getThreads(env: Env): Promise<ThreadRow[]> {
   const columnMap = await getColumnMap(env, env.THREAD_SHEET_ID);
+  return getThreadsWithMap(env, columnMap);
+}
+
+export async function getThreadsWithMap(env: Env, columnMap: Record<string, number>): Promise<ThreadRow[]> {
   const rows = await getAllRows(env, env.THREAD_SHEET_ID);
   return rows.map((row) => ({
     thread_id: rowCellValue(row, columnMap, "thread_id"),
@@ -143,11 +169,12 @@ export async function setPendingPreBrief(
   briefJson: string,
   organization?: string
 ): Promise<void> {
+  const columnMap = await getColumnMap(env, env.THREAD_SHEET_ID);
   await upsertThreadRow(env, threadId, {
     pending_pre_meeting_brief: briefJson,
     pending_pre_meeting_recorded_at: new Date().toISOString().slice(0, 10),
     ...(organization ? { organizations: organization } : {}),
-  });
+  }, columnMap);
 }
 
 function commitmentsSummary(commitments: any[] | undefined): string {
@@ -205,13 +232,14 @@ export async function pushEncounter(env: Env, record: any): Promise<void> {
   });
 
   // New encounter consumes and clears whatever pre-meeting brief was pending.
+  const threadMap = await getColumnMap(env, env.THREAD_SHEET_ID);
   await upsertThreadRow(env, record.thread_id, {
     organizations: record.organization,
     current_state: record.current_state,
     last_encounter_date: String(record.datetime_local || "").slice(0, 10),
     next_followup_date: record.next_meeting_date,
     pending_pre_meeting_brief: "",
-  });
+  }, threadMap);
 }
 
 export async function pushMomentumReview(env: Env, review: any): Promise<void> {

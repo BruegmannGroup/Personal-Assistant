@@ -13,6 +13,7 @@ import { saveAudioRecording, loadAudioRecording } from "./audio";
 import { verifyAccessJwt } from "./accessJwt";
 import { getFlaggedThreads } from "./reminders";
 import { getDormantThreads, dismissThreadAlert, setThreadAlertState } from "./alerts";
+import { getColumnMap } from "./smartsheet";
 import {
   getThreads,
   getEncounters,
@@ -212,7 +213,13 @@ function checkCronAuth(request: Request, env: Env, url: URL): boolean {
 }
 
 async function handleDailyAlerts(env: Env, requestUrl: string): Promise<Response> {
-  const dormant = await getDormantThreads(env);
+  // Fetch the column map once for this request — getDormantThreads and
+  // setThreadAlertState each need it, and Smartsheet's /columns endpoint
+  // has been returning intermittent 500s (errorCode 4000). Reusing one
+  // fetch across the whole handler avoids hammering the endpoint.
+  const columnMap = await getColumnMap(env, env.THREAD_SHEET_ID);
+
+  const dormant = await getDormantThreads(env, columnMap);
 
   if (!dormant.length) {
     return json({ sent: false, reason: "No dormant threads need alerts" });
@@ -234,7 +241,7 @@ async function handleDailyAlerts(env: Env, requestUrl: string): Promise<Response
 
     // Update last_alert_sent for each thread
     for (const t of dormant) {
-      await setThreadAlertState(env, t.thread_id, "active");
+      await setThreadAlertState(env, t.thread_id, "active", columnMap);
     }
 
     return json({ sent: true, thread_count: dormant.length, threads: dormant.map((d) => d.thread_id) });
@@ -244,7 +251,8 @@ async function handleDailyAlerts(env: Env, requestUrl: string): Promise<Response
 }
 
 async function handleDismissAlert(env: Env, threadId: string): Promise<Response> {
-  await dismissThreadAlert(env, threadId);
+  const columnMap = await getColumnMap(env, env.THREAD_SHEET_ID);
+  await dismissThreadAlert(env, threadId, columnMap);
   return json({ dismissed: true, thread_id: threadId });
 }
 

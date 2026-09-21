@@ -1,5 +1,5 @@
 import type { Env } from "./types";
-import { getThreads, getColumnMap, getAllRows, rowCellValue, req } from "./smartsheet";
+import { getAllRows, rowCellValue, req } from "./smartsheet";
 
 // Get dormant threads with no follow-up date set and alert_state != dismissed
 export interface DormantThread {
@@ -9,27 +9,27 @@ export interface DormantThread {
   days_since: number | null;
 }
 
-export async function getDormantThreads(env: Env): Promise<DormantThread[]> {
-  const threads = await getThreads(env);
+export async function getDormantThreads(env: Env, columnMap: Record<string, number>): Promise<DormantThread[]> {
+  const rows = await getAllRows(env, env.THREAD_SHEET_ID);
   const today = new Date(new Date().toISOString().slice(0, 10));
 
   const dormant: DormantThread[] = [];
 
-  for (const t of threads) {
-    if (!t.thread_id) continue;
-    if (t.next_followup_date) continue; // Skip threads with follow-up dates
-    if (t.current_state !== "Dormant") continue;
+  for (const t of rows) {
+    const threadId = rowCellValue(t, columnMap, "thread_id");
+    if (!threadId) continue;
+    if (rowCellValue(t, columnMap, "next_followup_date")) continue;
+    if (rowCellValue(t, columnMap, "current_state") !== "Dormant") continue;
+    if (rowCellValue(t, columnMap, "alert_state") === "dismissed") continue;
 
-    // Check alert_state - skip if dismissed
-    if (t.alert_state === "dismissed") continue;
-
-    const lastDate = t.last_encounter_date ? new Date(t.last_encounter_date.slice(0, 10)) : null;
-    const daysSince = lastDate ? Math.round((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+    const lastDate = rowCellValue(t, columnMap, "last_encounter_date");
+    const lastDateObj = lastDate ? new Date(lastDate.slice(0, 10)) : null;
+    const daysSince = lastDateObj ? Math.round((today.getTime() - lastDateObj.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
     dormant.push({
-      thread_id: t.thread_id,
-      organizations: t.organizations,
-      last_encounter_date: t.last_encounter_date,
+      thread_id: threadId,
+      organizations: rowCellValue(t, columnMap, "organizations"),
+      last_encounter_date: lastDate,
       days_since: daysSince,
     });
   }
@@ -37,14 +37,8 @@ export async function getDormantThreads(env: Env): Promise<DormantThread[]> {
   return dormant;
 }
 
-// Dismiss alert for a thread (set alert_state = dismissed)
-export async function dismissThreadAlert(env: Env, threadId: string): Promise<void> {
-  await setThreadAlertState(env, threadId, "dismissed");
-}
-
-// Set alert state for a thread
-export async function setThreadAlertState(env: Env, threadId: string, state: string): Promise<void> {
-  const columnMap = await getColumnMap(env, env.THREAD_SHEET_ID);
+// Set alert state for a thread (uses pre-fetched columnMap)
+export async function setThreadAlertState(env: Env, threadId: string, state: string, columnMap: Record<string, number>): Promise<void> {
   const rows = await getAllRows(env, env.THREAD_SHEET_ID);
 
   const row = rows.find((r: any) => rowCellValue(r, columnMap, "thread_id") === threadId);
@@ -68,4 +62,9 @@ export async function setThreadAlertState(env: Env, threadId: string, state: str
       body: JSON.stringify([{ id: row.id, cells }]),
     });
   }
+}
+
+// Dismiss alert for a thread (set alert_state = dismissed)
+export async function dismissThreadAlert(env: Env, threadId: string, columnMap: Record<string, number>): Promise<void> {
+  await setThreadAlertState(env, threadId, "dismissed", columnMap);
 }
